@@ -24,6 +24,50 @@
 using namespace cv;
 using namespace std;
 
+float fx1, fy1, cx1, cy1, fx2, fy2, cx2, cy2, xTrans, yTrans, zTrans;
+
+void reprojectPoints(double x, double y, double z, Point2f &pt1, Point2f &pt2)
+{
+    pt1.x = (x*fx1/(z + zTrans)) + cx1;
+    pt1.y = (y*fy1/(z + zTrans)) + cy1;
+    
+    pt2.x = (z*fx2/(x+xTrans))+ cx2;
+    pt2.y = (y*fy2/(x+xTrans))+ cy2;
+
+}
+
+void drawPoints(Mat &img1, Mat &img2, Point2f pt1, Point2f pt2, Scalar colour)
+{
+    static int r = 255;
+    static int g = 0;
+    static int b = 0;
+    static int sel = 0;
+    circle(img1, pt1, 5, colour);//Scalar(r, g, b));
+    circle(img2, pt2, 5, colour);//Scalar(r, g, b));
+    /*if(sel == 0)
+    {
+        g = r;
+        r = 0;
+        sel = 1;
+    }
+    else if(sel == 1)
+    {
+        b = g;
+        g = 0;
+        sel = 2;
+    }
+    else
+    {
+        r = b - 32;
+        if(r <= 31)
+        {
+            r = 255;
+        }
+        b = 0;
+        sel = 0;
+    }*/
+}
+
 
 int main(int argc, char** argv)
 {
@@ -33,7 +77,7 @@ int main(int argc, char** argv)
 
     
     Mat cameraMatrix1, cameraMatrix2, mapX1, mapY1, mapX2, mapY2, translation;
-    float fx1, fy1, cx1, cy1, fx2, fy2, cx2, cy2, xTrans, yTrans, zTrans;
+    
     
     const string calibFileName = "EnvironmentCalibration.xml";
     
@@ -107,6 +151,7 @@ int main(int argc, char** argv)
     while(inputCapture1.isOpened() && inputCapture2.isOpened())
     {
         
+        
         // Read and transform images from cameras
         inputCapture1.read(image1);
         inputCapture2.read(image2);
@@ -141,6 +186,14 @@ int main(int argc, char** argv)
         
         putText(dst1, posStr, Point(5,15), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 255));
         
+        Point2f point1;
+        Point2f point2;
+        reprojectPoints(0, -68, 0, point1, point2);
+        drawPoints(dst1, dst2, point1, point2, Scalar(255, 0, 0));
+        reprojectPoints(100, -68, 100, point1, point2);
+        drawPoints(dst1, dst2, point1, point2, Scalar(0, 255, 0));
+        reprojectPoints(-100, -68, -100, point1, point2);
+        drawPoints(dst1, dst2, point1, point2, Scalar(0, 0, 255));
         
         imshow("Camera2", dst2);
         imshow("Camera1", dst1);

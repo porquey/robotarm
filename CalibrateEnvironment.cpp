@@ -27,7 +27,9 @@ void CalibrateEnvironment(VideoCapture& inputCapture1, VideoCapture& inputCaptur
   {
     printf("Could not load camera intrinsics\n");
   }
-  printf("Loaded intrinsics\n");
+  else{
+      printf("Loaded intrinsics\n");
+  }
 
   Mat translation;
   Mat image1, image2;
