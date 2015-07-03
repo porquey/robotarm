@@ -68,11 +68,11 @@ int main(int argc, char** argv)
     yTrans = translation.at<double>(1, 0);
     zTrans = translation.at<double>(2, 0);
     
-    VideoCapture inputCapture1(0);////
+    VideoCapture inputCapture1(1);////
     inputCapture1.set(CV_CAP_PROP_FRAME_WIDTH,640);
     inputCapture1.set(CV_CAP_PROP_FRAME_HEIGHT,480);
     
-    VideoCapture inputCapture2(0);////
+    VideoCapture inputCapture2(2);////
     inputCapture2.set(CV_CAP_PROP_FRAME_WIDTH,640);
     inputCapture2.set(CV_CAP_PROP_FRAME_HEIGHT,480);
     
