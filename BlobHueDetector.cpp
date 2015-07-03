@@ -36,18 +36,18 @@ blobConvexity(0)
     detector = BetterBlobDetector(params);
 }
 /*
-bool BlobHueDetector::getBlobData(double &area, double &convexity)
-{
-    if(!blobDetected)
-    {
-        return false;
-    }
-    
-    area = blobArea;
-    convexity = blobConvexity;
-    
-    return true;
-}*/
+ bool BlobHueDetector::getBlobData(double &area, double &convexity)
+ {
+ if(!blobDetected)
+ {
+ return false;
+ }
+ 
+ area = blobArea;
+ convexity = blobConvexity;
+ 
+ return true;
+ }*/
 
 void BlobHueDetector::setHSVRanges(const int lowH, const int highH, const int lowS, const int highS, const int lowV, const int highV)
 {
@@ -71,14 +71,14 @@ bool BlobHueDetector::getBlobCenter(cv::Mat &src, cv::Mat &thresh, cv::Point2f &
     thresh = 255 - thresh;
     
     cv::Mat erosionElement = cv::getStructuringElement(cv::MORPH_ELLIPSE,
-                                               cv::Size(2 * erosionSize + 1, 2 * erosionSize + 1),
-                                               cv::Point(erosionSize, erosionSize));
+                                                       cv::Size(2 * erosionSize + 1, 2 * erosionSize + 1),
+                                                       cv::Point(erosionSize, erosionSize));
     
     // Apply erosion or dilation on the image
     cv::erode(thresh, thresh, erosionElement);
     
     cv::Mat dilationElement = cv::getStructuringElement(cv::MORPH_ELLIPSE,
-                                                cv::Size(2 * dilationSize + 1, 2 * dilationSize + 1),
+                                                        cv::Size(2 * dilationSize + 1, 2 * dilationSize + 1),
                                                         cv::Point(dilationSize, dilationSize));
     
     // Apply erosion or dilation on the image
@@ -98,7 +98,7 @@ bool BlobHueDetector::getBlobCenter(cv::Mat &src, cv::Mat &thresh, cv::Point2f &
     for(std::vector<cv::KeyPoint>::iterator blobIterator = keypoints.begin(); blobIterator != keypoints.end(); blobIterator++){
         //cout << "size of blob is: " << blobIterator->size << endl;
         //cout << "point is at: " << blobIterator->pt << endl;
-        cv:circle(dst, blobIterator->pt, 1, cv::Scalar(0, 0, 255));
+    cv:circle(dst, blobIterator->pt, 1, cv::Scalar(0, 0, 255));
         if(blobIterator->size > blobSize)
         {
             blobSize = blobIterator->size;

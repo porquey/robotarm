@@ -6,7 +6,7 @@ using namespace cv;
 BetterBlobDetector::BetterBlobDetector(const SimpleBlobDetector::Params &parameters):
 params(parameters)
 {
-
+    
 }
 
 void BetterBlobDetector::findBlobs(const cv::Mat &image, const cv::Mat &binaryImage,
@@ -14,14 +14,13 @@ void BetterBlobDetector::findBlobs(const cv::Mat &image, const cv::Mat &binaryIm
 {
     (void)image;
     centers.clear();
-
+    
     curContours.clear();
-
+    
     std::vector < std::vector<cv::Point> >contours;
     Mat tmpBinaryImage = binaryImage.clone();
     findContours(tmpBinaryImage, contours, CV_RETR_LIST, CV_CHAIN_APPROX_NONE);
-
-
+    
     for (size_t contourIdx = 0; contourIdx < contours.size(); contourIdx++)
     {
         Center center;
@@ -42,7 +41,7 @@ void BetterBlobDetector::findBlobs(const cv::Mat &image, const cv::Mat &binaryIm
             if (ratio < params.minCircularity || ratio >= params.maxCircularity)
                 continue;
         }
-
+        
         if (params.filterByInertia)
         {
             double denominator = sqrt(pow(2 * moms.mu11, 2) + pow(moms.mu20 - moms.mu02, 2));
@@ -54,7 +53,7 @@ void BetterBlobDetector::findBlobs(const cv::Mat &image, const cv::Mat &binaryIm
                 double sinmin = 2 * moms.mu11 / denominator;
                 double cosmax = -cosmin;
                 double sinmax = -sinmin;
-
+                
                 double imin = 0.5 * (moms.mu20 + moms.mu02) - 0.5 * (moms.mu20 - moms.mu02) * cosmin - moms.mu11 * sinmin;
                 double imax = 0.5 * (moms.mu20 + moms.mu02) - 0.5 * (moms.mu20 - moms.mu02) * cosmax - moms.mu11 * sinmax;
                 ratio = imin / imax;
@@ -63,13 +62,13 @@ void BetterBlobDetector::findBlobs(const cv::Mat &image, const cv::Mat &binaryIm
             {
                 ratio = 1;
             }
-
+            
             if (ratio < params.minInertiaRatio || ratio >= params.maxInertiaRatio)
                 continue;
-
+            
             center.confidence = ratio * ratio;
         }
-
+        
         if (params.filterByConvexity)
         {
             vector < Point > hull;
@@ -80,15 +79,15 @@ void BetterBlobDetector::findBlobs(const cv::Mat &image, const cv::Mat &binaryIm
             if (ratio < params.minConvexity || ratio >= params.maxConvexity)
                 continue;
         }
-
+        
         center.location = Point2d(moms.m10 / moms.m00, moms.m01 / moms.m00);
-
+        
         if (params.filterByColor)
         {
             if (binaryImage.at<uchar> (cvRound(center.location.y), cvRound(center.location.x)) != params.blobColor)
                 continue;
         }
-
+        
         //compute blob radius
         {
             vector<double> dists;
@@ -100,7 +99,7 @@ void BetterBlobDetector::findBlobs(const cv::Mat &image, const cv::Mat &binaryIm
             std::sort(dists.begin(), dists.end());
             center.radius = (dists[(dists.size() - 1) / 2] + dists[dists.size() / 2]) / 2.;
         }
-
+        
         centers.push_back(center);
         curContours.push_back(contours[contourIdx]);
     }
@@ -116,7 +115,7 @@ const std::vector < std::vector<cv::Point> > BetterBlobDetector::getContours()
 
 void BetterBlobDetector::getBlobData(size_t idx, double &area, double &circularity, double &inertia, double &perimeter, double &convexity)//, bool moreData, uchar &intensity, cv::Vec3b &color, cv::Vec3b &hsvColor, cv::Mat &image, cv::Mat &binaryImage, cv::Mat &hsvImage)
 {
-
+    
     Moments moms = moments(Mat(_contours[idx]));
     
     area = moms.m00;
@@ -148,40 +147,40 @@ void BetterBlobDetector::getBlobData(size_t idx, double &area, double &circulari
     double hullArea = contourArea(Mat(hull));
     convexity = contArea / hullArea;
     /*if(moreData)
-    {
-        Point2d location = Point2d(moms.m10 / moms.m00, moms.m01 / moms.m00);
-        intensity = binaryImage.at<uchar> (cvRound(location.y), cvRound(location.x));
-        color = image.at<cv::Vec3b> (cvRound(location.y), cvRound(location.x));
-        hsvColor = hsvImage.at<cv::Vec3b> (cvRound(location.y), cvRound(location.x));
-    }*/
+     {
+     Point2d location = Point2d(moms.m10 / moms.m00, moms.m01 / moms.m00);
+     intensity = binaryImage.at<uchar> (cvRound(location.y), cvRound(location.x));
+     color = image.at<cv::Vec3b> (cvRound(location.y), cvRound(location.x));
+     hsvColor = hsvImage.at<cv::Vec3b> (cvRound(location.y), cvRound(location.x));
+     }*/
 }
 
 void BetterBlobDetector::detectImpl(const cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, const cv::Mat&) const
 {
     //TODO: support mask
-     _contours.clear();
-
+    _contours.clear();
+    
     keypoints.clear();
     Mat grayscaleImage;
     if (image.channels() == 3)
         cvtColor(image, grayscaleImage, CV_BGR2GRAY);
     else
         grayscaleImage = image;
-
+    
     vector < vector<Center> > centers;
     vector < vector<cv::Point> >contours;
     for (double thresh = params.minThreshold; thresh < params.maxThreshold; thresh += params.thresholdStep)
     {
         Mat binarizedImage;
         threshold(grayscaleImage, binarizedImage, thresh, 255, THRESH_BINARY);
-
+        
         vector < Center > curCenters;
         vector < vector<cv::Point> >curContours, newContours;
         findBlobs(grayscaleImage, binarizedImage, curCenters, curContours);
         vector < vector<Center> > newCenters;
         for (size_t i = 0; i < curCenters.size(); i++)
         {
-
+            
             bool isNew = true;
             for (size_t j = 0; j < centers.size(); j++)
             {
@@ -190,7 +189,7 @@ void BetterBlobDetector::detectImpl(const cv::Mat& image, std::vector<cv::KeyPoi
                 if (!isNew)
                 {
                     centers[j].push_back(curCenters[i]);
-
+                    
                     size_t k = centers[j].size() - 1;
                     while( k > 0 && centers[j][k].radius < centers[j][k-1].radius )
                     {
@@ -198,7 +197,7 @@ void BetterBlobDetector::detectImpl(const cv::Mat& image, std::vector<cv::KeyPoi
                         k--;
                     }
                     centers[j][k] = curCenters[i];
-
+                    
                     break;
                 }
             }
@@ -212,7 +211,7 @@ void BetterBlobDetector::detectImpl(const cv::Mat& image, std::vector<cv::KeyPoi
         std::copy(newCenters.begin(), newCenters.end(), std::back_inserter(centers));
         std::copy(newContours.begin(), newContours.end(), std::back_inserter(contours));
     }
-
+    
     for (size_t i = 0; i < centers.size(); i++)
     {
         if (centers[i].size() < params.minRepeatability)
