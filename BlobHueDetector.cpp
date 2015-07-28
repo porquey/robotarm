@@ -3,22 +3,19 @@
 
 BlobHueDetector::BlobHueDetector():
 params(),
-iLowH(56),
-iHighH(76),
+iLowH(0),
+iHighH(179),
 iLowS(0),
 iHighS(255),
-iLowV(40),
-iHighV(255),
-blobDetected(false),
-blobArea(0),
-blobConvexity(0)
+iLowV(0),
+iHighV(255)
 {
     params.minThreshold = 80;
     params.maxThreshold = 150;
     
     // Filter by Area.
     params.filterByArea = true;
-    params.minArea = 200;
+    params.minArea = 150;
     params.maxArea = 10000;
     
     // Filter by Circularity
@@ -49,19 +46,29 @@ blobConvexity(0)
  return true;
  }*/
 
-void BlobHueDetector::setHSVRanges(const int lowH, const int highH, const int lowS, const int highS, const int lowV, const int highV)
+void BlobHueDetector::setHSVRanges(const HSVRanges range)
 {
-    iLowH = lowH;
-    iHighH = highH;
-    iLowS = lowS;
-    iHighS = highS;
-    iLowV = lowV;
-    iHighV = highV;
+    iLowH = range.lowH;
+    iHighH = range.highH;
+    iLowS = range.lowS;
+    iHighS = range.highS;
+    iLowV = range.lowV;
+    iHighV = range.highV;
 }
 
-bool BlobHueDetector::getBlobCenter(cv::Mat &src, cv::Mat &thresh, cv::Point2f &center, cv::Mat &dst, std::string windowName, double &area, double &convexity)
+void BlobHueDetector::setDefaultHSVRanges()
 {
-    cv::Mat hsv;
+    iLowH = 0;
+    iHighH = 179;
+    iLowS = 0;
+    iHighS = 255;
+    iLowV = 0;
+    iHighV = 255;
+}
+
+bool BlobHueDetector::getBlobCenter(cv::Mat &src, cv::KeyPoint &keypoint)
+{
+    cv::Mat hsv, thresh;
     int erosionSize = 3;
     int dilationSize = 4;
     
@@ -91,14 +98,14 @@ bool BlobHueDetector::getBlobCenter(cv::Mat &src, cv::Mat &thresh, cv::Point2f &
     detector.detect(thresh, keypoints);
     
     // Draw detected blobs as red circles.
-    // DrawMatchesFlags::DRAW_RICH_KEYPOINTS flag ensures the size of the circle corresponds to the size of blob
-    cv::drawKeypoints(src, keypoints, dst, cv::Scalar(0,255,255), cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
+    // DrawMatchesFlags::DRAW_RICH_KEYPOINTS flag ensures the size of the circle corresponds to the size of blob/usr/local/lib/libopencv_imgproc.2.4.10.dylib
+    //cv::drawKeypoints(src, keypoints, dst, cv::Scalar(0,255,255), cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
     int i = 0, k = 0;
     int blobSize = 0;
     for(std::vector<cv::KeyPoint>::iterator blobIterator = keypoints.begin(); blobIterator != keypoints.end(); blobIterator++){
         //cout << "size of blob is: " << blobIterator->size << endl;
         //cout << "point is at: " << blobIterator->pt << endl;
-    cv:circle(dst, blobIterator->pt, 1, cv::Scalar(0, 0, 255));
+        //cv:circle(dst, blobIterator->pt, 1, cv::Scalar(0, 0, 255));
         if(blobIterator->size > blobSize)
         {
             blobSize = blobIterator->size;
@@ -112,11 +119,12 @@ bool BlobHueDetector::getBlobCenter(cv::Mat &src, cv::Mat &thresh, cv::Point2f &
     }
     else
     {
-        center = keypoints.at(k).pt;
+        keypoint = keypoints.at(k);
+        double blobArea, blobCircularity, blobInertia, blobPerimeter, blobConvexity;
         detector.getBlobData(k, blobArea, blobCircularity,  blobInertia, blobPerimeter, blobConvexity);
-        blobDetected = true;
-        area = blobArea;
-        convexity = blobConvexity;
+        //blobDetected = true;
+        //area = blobArea;
+        //convexity = blobConvexity;
         return true;
     }
 }

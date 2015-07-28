@@ -8,6 +8,8 @@
 #include <opencv2/calib3d/calib3d.hpp>
 #include <opencv2/highgui/highgui.hpp>
 
+#include "HSVRange.h"
+
 #ifndef _CRT_SECURE_NO_WARNINGS
 # define _CRT_SECURE_NO_WARNINGS
 #endif
@@ -26,4 +28,4 @@ static int iLowV = 0;
 static int iHighV = 255;
 
 void MouseCallBack(int event, int x, int y, int flags, void* userData);
-void SetBlobColour(VideoCapture& inputCapture);
+void SetBlobColour(VideoCapture& inputCapture1, VideoCapture& inputCapture2);

@@ -56,7 +56,12 @@ void CalibrateEnvironment(VideoCapture& inputCapture1, VideoCapture& inputCaptur
     }
 
     char c = waitKey(15);
-    if (c == 's' && translationCalibrated)
+    if (c == 'c')
+    {
+        printf("Cancelling...\n");
+        return;
+    }
+      else if(c == 's' && translationCalibrated)
     {
       printf("Saving...\n");
       const string fileName = "EnvironmentCalibration.xml";
@@ -68,6 +73,7 @@ void CalibrateEnvironment(VideoCapture& inputCapture1, VideoCapture& inputCaptur
       fs << "Mapping_X_2" << mapX2;
       fs << "Mapping_Y_2" << mapY2;
       fs << "Translation" << translation;
+        return;
     }
     else if (c == 't' && rotationCalibrated)
     {
@@ -210,7 +216,6 @@ void CalibrateEnvironment(VideoCapture& inputCapture1, VideoCapture& inputCaptur
         tvecs2.release();
 
         rotationCalibrated = true;
-
       }
     }
     imshow("Camera1", image1);

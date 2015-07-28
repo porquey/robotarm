@@ -1,9 +1,21 @@
 <?xml version="1.0"?>
 <opencv_storage>
-<HSV_Data type_id="opencv-matrix">
+<HSV_Size type_id="opencv-matrix">
+  <rows>1</rows>
+  <cols>1</cols>
+  <dt>i</dt>
+  <data>
+    2</data></HSV_Size>
+<HSV_Data_0 type_id="opencv-matrix">
   <rows>3</rows>
   <cols>2</cols>
   <dt>i</dt>
   <data>
-    107 127 134 294 23 163</data></HSV_Data>
+    60 80 139 299 29 169</data></HSV_Data_0>
+<HSV_Data_1 type_id="opencv-matrix">
+  <rows>3</rows>
+  <cols>2</cols>
+  <dt>i</dt>
+  <data>
+    -5 15 116 276 184 324</data></HSV_Data_1>
 </opencv_storage>

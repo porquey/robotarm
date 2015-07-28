@@ -9,9 +9,9 @@
 #include <opencv2/calib3d/calib3d.hpp>
 #include <opencv2/highgui/highgui.hpp>
 
+#include "SetBlobColour.h"
 #include "BlobHueDetector.h"
 #include "CalibrateEnvironment.h"
-#include "SetBlobColour.h"
 
 #ifndef _CRT_SECURE_NO_WARNINGS
 # define _CRT_SECURE_NO_WARNINGS
@@ -20,18 +20,21 @@
 #define HALF_POINT_X 319.5
 #define HALF_POINT_Y 239.5
 
+#define CAMERA1 0
+#define CAMERA2 0
 
 using namespace cv;
 using namespace std;
 
+struct Point3D
+{
+    double x;
+    double y;
+    double z;
+};
 
 int main(int argc, char** argv)
 {
-    float xPos = 0, yPos = 0, zPos = 0, xPosLast = 0, yPosLast = 0, zPosLast = 0;
-
-    BlobHueDetector detector;
-
-    
     Mat cameraMatrix1, cameraMatrix2, mapX1, mapY1, mapX2, mapY2, translation;
     float fx1, fy1, cx1, cy1, fx2, fy2, cx2, cy2, xTrans, yTrans, zTrans;
     
@@ -68,11 +71,11 @@ int main(int argc, char** argv)
     yTrans = translation.at<double>(1, 0);
     zTrans = translation.at<double>(2, 0);
     
-    VideoCapture inputCapture1(0);////
+    VideoCapture inputCapture1(CAMERA1);////
     inputCapture1.set(CV_CAP_PROP_FRAME_WIDTH,640);
     inputCapture1.set(CV_CAP_PROP_FRAME_HEIGHT,480);
     
-    VideoCapture inputCapture2(0);////
+    VideoCapture inputCapture2(CAMERA2);////
     inputCapture2.set(CV_CAP_PROP_FRAME_WIDTH,640);
     inputCapture2.set(CV_CAP_PROP_FRAME_HEIGHT,480);
     
@@ -80,29 +83,51 @@ int main(int argc, char** argv)
     
     const string blobFileName = "BlobHSVColour.xml";
     FileStorage bfs(blobFileName, FileStorage::READ);
-    Mat hsvData;
     
-    bfs["HSV_Data"] >> hsvData;
-    if(hsvData.data == NULL)
+    Mat hsvSize;
+    int blobNum = 0;
+    
+    vector<BlobHueDetector> detector;
+    
+    bfs["HSV_Size"] >> hsvSize;
+
+    if(hsvSize.data == NULL)
     {
         printf("No BlobHSVColour data\n");
-        detector.setHSVRanges(0, 179, 0, 255, 0, 255);
+        
+        BlobHueDetector blobDetector;
+        blobDetector.setDefaultHSVRanges();
+        detector.push_back(blobDetector);
     }
     else
     {
-        cout << hsvData.at<int>(0, 0) << " " << hsvData.at<int>(0, 1) << " " << hsvData.at<int>(1, 0) << " " << hsvData.at<int>(1, 1) << " " << hsvData.at<int>(2, 0) << " " << hsvData.at<int>(2, 1) << endl;
-
-        detector.setHSVRanges(static_cast<int>(hsvData.at<int>(0, 0)), static_cast<int>(hsvData.at<int>(0, 1)), static_cast<int>(hsvData.at<int>(1, 0)), static_cast<int>(hsvData.at<int>(1, 1)), static_cast<int>(hsvData.at<int>(2, 0)), static_cast<int>(hsvData.at<int>(2, 1)));
+        printf("Found BlobHSVColour data\n");
+        blobNum = hsvSize.at<int>(0, 0);
+        
+        for(int i = 0; i < blobNum; i++)
+        {
+            string dataName = "HSV_Data_" + to_string(i);
+            Mat hsvData;
+            bfs[dataName] >> hsvData;
+            BlobHueDetector blobDetector;
+            HSVRanges ranges;
+            
+            ranges.lowH = hsvData.at<int>(0, 0);
+            ranges.highH = hsvData.at<int>(0, 1);
+            ranges.lowS = hsvData.at<int>(1, 0);
+            ranges.highS = hsvData.at<int>(1, 1);
+            ranges.lowV = hsvData.at<int>(2, 0);
+            ranges.highV = hsvData.at<int>(2, 1);
+            
+            blobDetector.setHSVRanges(ranges);
+            detector.push_back(blobDetector);
+        }
     }
     
-    string posStr = "X: " + to_string(xPos) + "\tY: " + to_string(yPos) + "\tZ: " + to_string(zPos);
-    
-    Point2f center1, center2;
     Mat thresh1, thresh2, dst1, dst2;
-    double area1, area2, conv1, conv2;
-    double x1, x2, y1, y2, a, b, c;
+    //double area1, area2, conv1, conv2;
     
-    bool showThresh = false;
+    //bool showThresh = false;
     
     while(inputCapture1.isOpened() && inputCapture2.isOpened())
     {
@@ -117,39 +142,59 @@ int main(int argc, char** argv)
         t1.release();
         t2.release();
         
+        vector<bool> detectedVec;
+        vector<KeyPoint> keypointVec1, keypointVec2;
+        vector<Point3D> coords, coordsLast;
+        for(int i = 0; i < blobNum; i++)
+        {
+            KeyPoint keypoint1, keypoint2;
+            bool detected1 = detector[i].getBlobCenter(image1, keypoint1);
+            bool detected2 = detector[i].getBlobCenter(image2, keypoint2);
+            double xPos = 0, yPos = 0, zPos = 0;
+            double x1, x2, y1, y2, a, b, c;
+
+            x1 = keypoint1.pt.x - cx1;
+            x2 = keypoint2.pt.x - cx2;
+            y1 = keypoint1.pt.y - cy1;
+            y2 = keypoint2.pt.y - cy2;
+            
+            a = (x1)/fx1;
+            b = (x2)/fx2;
+            c = a*b;
+            
+            xPos = (c*xTrans + a*zTrans)/(1+c);
+            zPos = (b*xTrans + zTrans)/(1+c);
+            yPos = -((y1)/fy1) * zPos;
+            zPos -= zTrans;
+            
+            Point3D coordTemp;
+            coordTemp.x = xPos;
+            coordTemp.y = yPos;
+            coordTemp.z = zPos;
+            coords.push_back(coordTemp);
+            detectedVec.push_back(detected1 && detected2);
+            keypointVec1.push_back(keypoint1);
+            keypointVec2.push_back(keypoint2);
+        }
         
-        bool detected1 = detector.getBlobCenter(image1, thresh1, center1, dst1, "Cam1", area1, conv1);
-        bool detected2 = detector.getBlobCenter(image2, thresh2, center2, dst2, "Cam2", area2, conv2);
+        cv::drawKeypoints(image1, keypointVec1, dst1, cv::Scalar(0,255,255), cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
+        cv::drawKeypoints(image2, keypointVec2, dst2, cv::Scalar(0,255,255), cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
         
-        
-        x1 = center1.x - cx1;
-        x2 = center2.x - cx2;
-        y1 = center1.y - cy1;
-        y2 = center2.y - cy2;
-        
-        
-        a = (x1)/fx1;
-        b = (x2)/fx2;
-        c = a*b;
-        
-        xPos = (c*xTrans + a*zTrans)/(1+c);
-        zPos = (b*xTrans + zTrans)/(1+c);
-        yPos = -((y1)/fy1) * zPos;
-        zPos -= zTrans;
-        
-        posStr = "X: " + to_string(xPos) + "  Y: " + to_string(yPos) + "  Z: " + to_string(zPos);
-        
-        putText(dst1, posStr, Point(5,15), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 255));
-        
+        for(int i = 0; i < blobNum; i++)
+        {
+            string posStr = "X: " + to_string(coords[i].x) + "  Y: " + to_string(coords[i].y) + "  Z: " + to_string(coords[i].z);
+            int j = 0;
+            if(i > 1)
+            {
+                i = 0;
+                j = 1;
+            }
+            putText(dst1, posStr, Point(5, 15 * (i + 1)), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(j * 255, i * 255, 255 - i * 255));
+        }
         
         imshow("Camera2", dst2);
         imshow("Camera1", dst1);
         
-        if(showThresh)
-        {
-            imshow("Thresh1", thresh1);
-            imshow("Thresh2", thresh2);
-        }
         
         char ch = waitKey(15);
         if(ch == 'e')
@@ -159,16 +204,47 @@ int main(int argc, char** argv)
         else if(ch == 'c')
         {
             destroyAllWindows();
-            SetBlobColour(inputCapture1);
-            cout << "nop " << endl;
+            SetBlobColour(inputCapture1, inputCapture2);
+            cout << "Setting Blob HSV Data" << endl;
             FileStorage bfs(blobFileName, FileStorage::READ);
             
-            bfs["HSV_Data"] >> hsvData;
-            cout << hsvData.at<int>(0, 0) << " " << hsvData.at<int>(0, 1) << " " << hsvData.at<int>(1, 0) << " " << hsvData.at<int>(1, 1) << " " << hsvData.at<int>(2, 0) << " " << hsvData.at<int>(2, 1) << endl;
-            detector.setHSVRanges(static_cast<int>(hsvData.at<int>(0, 0)), static_cast<int>(hsvData.at<int>(0, 1)), static_cast<int>(hsvData.at<int>(1, 0)), static_cast<int>(hsvData.at<int>(1, 1)), static_cast<int>(hsvData.at<int>(2, 0)), static_cast<int>(hsvData.at<int>(2, 1)));
+            bfs["HSV_Size"] >> hsvSize;
+            detector.clear();
+            if(hsvSize.data == NULL)
+            {
+                printf("No BlobHSVColour data\n");
+                
+                BlobHueDetector blobDetector;
+                blobDetector.setDefaultHSVRanges();
+                detector.push_back(blobDetector);
+            }
+            else
+            {
+                printf("Found BlobHSVColour data\n");
+                blobNum = hsvSize.at<int>(0, 0);
+                
+                for(int i = 0; i < blobNum; i++)
+                {
+                    string dataName = "HSV_Data_" + to_string(i);
+                    Mat hsvData;
+                    bfs[dataName] >> hsvData;
+                    BlobHueDetector blobDetector;
+                    HSVRanges ranges;
+                    
+                    ranges.lowH = hsvData.at<int>(0, 0);
+                    ranges.highH = hsvData.at<int>(0, 1);
+                    ranges.lowS = hsvData.at<int>(1, 0);
+                    ranges.highS = hsvData.at<int>(1, 1);
+                    ranges.lowV = hsvData.at<int>(2, 0);
+                    ranges.highV = hsvData.at<int>(2, 1);
+                    
+                    blobDetector.setHSVRanges(ranges);
+                    detector.push_back(blobDetector);
+                }
+            }
             destroyAllWindows();
         }
-        else if(ch == 't')
+        /*else if(ch == 't')
         {
             if(showThresh)
             {
@@ -179,35 +255,28 @@ int main(int argc, char** argv)
             {
                 showThresh = true;
             }
-        }
+        }*/
         else if(ch == 'p')
         {
-            
-            //cout << "center x1: " << center1.x << endl;
-            cout << "center y1: " << center1.y << endl;
-            //cout << "center x2: " << center2.x << endl;
-            cout << "center y2: " << center2.y << endl;
-            
-            
-            //cout << "x1: " << x1 << endl;
-            cout << "y1: " << y1 << endl;
-            cout << "cy: " << cy1 << endl;
-            //cout << "x2: " << x2 << endl;
-            cout << "y2: " << y2 << endl;
-            
-            cout << "X: " << xPos << endl;
-            cout << "Y: " << yPos << endl;
-            cout << "Z: " << zPos << endl;
-            
-            cout << "X movement: " << (xPos - xPosLast) << endl;
-            cout << "Y movement: " << (yPos - yPosLast) << endl;
-            cout << "Z movement: " << (zPos - zPosLast) << endl;
-            
-            xPosLast = xPos;
-            yPosLast = yPos;
-            zPosLast = zPos;
+            for(int i = 0; i < blobNum; i++)
+            {
+                cout << "center1: " << keypointVec1[i].pt << endl;
+                cout << "center2: " << keypointVec2[i].pt << endl;
+                
+                cout << "X: " << coords[i].x << endl;
+                cout << "Y: " << coords[i].y << endl;
+                cout << "Z: " << coords[i].z << endl;
+                
+                cout << "X movement: " << (coords[i].x - coordsLast[i].x) << endl;
+                cout << "Y movement: " << (coords[i].y - coordsLast[i].y) << endl;
+                cout << "Z movement: " << (coords[i].z - coordsLast[i].z) << endl;
+                
+                coordsLast[i].x = coords[i].x;
+                coordsLast[i].y = coords[i].y;
+                coordsLast[i].z = coords[i].z;
+            }
         }
-        else if(ch == 'b')
+        /*else if(ch == 'b')
         {
             if(detected1)
             {
@@ -227,7 +296,7 @@ int main(int argc, char** argv)
                 cout << "Cam2 : no blob" << endl;
             }
             
-        }
+        }*/
     }
     
 }

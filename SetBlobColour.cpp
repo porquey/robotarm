@@ -19,45 +19,61 @@ void MouseCallBack(int event, int x, int y, int flags, void* userData)
     }
 }
 
-
-void SetBlobColour(VideoCapture& inputCapture)
+void SetBlobColour(VideoCapture& inputCapture1, VideoCapture& inputCapture2)
 {
-    namedWindow("Src", WINDOW_AUTOSIZE);
-    Mat src;
-    //inputCapture.set(CV_CAP_PROP_FRAME_WIDTH,640);
-    //inputCapture.set(CV_CAP_PROP_FRAME_HEIGHT,480);
-    
-    while(inputCapture.isOpened())
-    {
-        inputCapture.read(src);
-        imshow("Src", src);
+    namedWindow("Src1", WINDOW_AUTOSIZE);
+    namedWindow("Src2", WINDOW_AUTOSIZE);
 
-        Mat hsv, thresh;
-        cvtColor(src, hsv, CV_BGR2HSV);
-        void* userData = static_cast<void*>(&hsv);
-        setMouseCallback("Src", MouseCallBack, userData);
+    Mat src1, src2;
+
+    vector<HSVRanges> hsvVector;
+    
+    while(inputCapture1.isOpened())
+    {
+        inputCapture1.read(src1);
+        inputCapture2.read(src2);
+        imshow("Src1", src1);
+        imshow("Src2", src2);
+
+        Mat hsv1, hsv2, thresh1, thresh2;
         
-        inRange(hsv, Scalar(iLowH, iLowS, iLowV), Scalar(iHighH, iHighS, iHighV), thresh);
-        thresh = 255 - thresh;
+        cvtColor(src1, hsv1, CV_BGR2HSV);
+        cvtColor(src2, hsv2, CV_BGR2HSV);
+        
+        void* userData1 = static_cast<void*>(&hsv1);
+        void* userData2 = static_cast<void*>(&hsv2);
+
+        setMouseCallback("Src1", MouseCallBack, userData1);
+        setMouseCallback("Src2", MouseCallBack, userData2);
+
+        inRange(hsv1, Scalar(iLowH, iLowS, iLowV), Scalar(iHighH, iHighS, iHighV), thresh1);
+        inRange(hsv2, Scalar(iLowH, iLowS, iLowV), Scalar(iHighH, iHighS, iHighV), thresh2);
+        
+        thresh1 = 255 - thresh1;
+        thresh2 = 255 - thresh2;
+
         Mat erosionElement = getStructuringElement(cv::MORPH_ELLIPSE,
                                                    cv::Size(2 * 3 + 1, 2 * 3 + 1),
                                                    cv::Point(3, 3) );
         
         // Apply erosion or dilation on the image
-        erode(thresh, thresh, erosionElement);
+        erode(thresh1, thresh1, erosionElement);
+        erode(thresh2, thresh2, erosionElement);
         
         Mat dilationElement = getStructuringElement(cv::MORPH_ELLIPSE,
                                                     cv::Size(2 * 4 + 1, 2 * 4 + 1),
                                                     cv::Point(4, 4) );
         
         // Apply erosion or dilation on the image
-        dilate(thresh, thresh, dilationElement);
+        dilate(thresh1, thresh1, dilationElement);
+        dilate(thresh2, thresh2, dilationElement);
         
-        imshow("Thresh", thresh);
+        imshow("Thresh1", thresh1);
+        imshow("Thresh2", thresh2);
         
         int key = waitKey(30);
         
-        if((char)key == 'q')
+        if((char)key == 't')
         {
             iHighH += 5;
             cout << "H: " << iHighH << " - " << iLowH << endl;
@@ -65,41 +81,41 @@ void SetBlobColour(VideoCapture& inputCapture)
             cout << "V: " << iHighV << " - " << iLowV << endl;
             
         }
-        else if((char)key == 'w')
+        else if((char)key == 'y')
         {
             iLowH += 5;
             cout << "H: " << iHighH << " - " << iLowH << endl;
             cout << "S: " << iHighS << " - " << iLowS << endl;
             cout << "V: " << iHighV << " - " << iLowV << endl;
         }
-        else if((char)key == 'e')
+        else if((char)key == 'u')
         {
             iHighS += 5;
             cout << "H: " << iHighH << " - " << iLowH << endl;
             cout << "S: " << iHighS << " - " << iLowS << endl;
             cout << "V: " << iHighV << " - " << iLowV << endl;
         }
-        else if((char)key == 'r')
+        else if((char)key == 'i')
         {
             iLowS += 5;
             cout << "H: " << iHighH << " - " << iLowH << endl;
             cout << "S: " << iHighS << " - " << iLowS << endl;
             cout << "V: " << iHighV << " - " << iLowV << endl;
         }
-        else if((char)key == 't')
+        else if((char)key == 'o')
         {
             iHighV += 5;
             cout << "H: " << iHighH << " - " << iLowH << endl;
             cout << "S: " << iHighS << " - " << iLowS << endl;
             cout << "V: " << iHighV << " - " << iLowV << endl;
         }
-        else if((char)key == 'y')
+        else if((char)key == 'p')
         {
             iLowV += 5;
             cout << "H: " << iHighH << " - " << iLowH << endl;
             cout << "S: " << iHighS << " - " << iLowS << endl;
             cout << "V: " << iHighV << " - " << iLowV << endl;
-        }else if((char)key == 'a')
+        }else if((char)key == 'g')
         {
             iHighH -= 5;
             cout << "H: " << iHighH << " - " << iLowH << endl;
@@ -107,50 +123,84 @@ void SetBlobColour(VideoCapture& inputCapture)
             cout << "V: " << iHighV << " - " << iLowV << endl;
             
         }
-        else if((char)key == 's')
+        else if((char)key == 'h')
         {
             iLowH -= 5;
             cout << "H: " << iHighH << " - " << iLowH << endl;
             cout << "S: " << iHighS << " - " << iLowS << endl;
             cout << "V: " << iHighV << " - " << iLowV << endl;
         }
-        else if((char)key == 'd')
+        else if((char)key == 'j')
         {
             iHighS -= 5;
             cout << "H: " << iHighH << " - " << iLowH << endl;
             cout << "S: " << iHighS << " - " << iLowS << endl;
             cout << "V: " << iHighV << " - " << iLowV << endl;
         }
-        else if((char)key == 'f')
+        else if((char)key == 'k')
         {
             iLowS -= 5;
             cout << "H: " << iHighH << " - " << iLowH << endl;
             cout << "S: " << iHighS << " - " << iLowS << endl;
             cout << "V: " << iHighV << " - " << iLowV << endl;
         }
-        else if((char)key == 'g')
+        else if((char)key == 'l')
         {
             iHighV -= 5;
             cout << "H: " << iHighH << " - " << iLowH << endl;
             cout << "S: " << iHighS << " - " << iLowS << endl;
             cout << "V: " << iHighV << " - " << iLowV << endl;
         }
-        else if((char)key == 'h')
+        else if((char)key == ';')
         {
             iLowV -= 5;
             cout << "H: " << iHighH << " - " << iLowH << endl;
             cout << "S: " << iHighS << " - " << iLowS << endl;
             cout << "V: " << iHighV << " - " << iLowV << endl;
         }
-        else if((char)key == ' ')
+        else if((char)key == 's')
         {
             printf("Saving...\n");
+            HSVRanges ranges;
+
+            ranges.lowH = iLowH;
+            ranges.highH = iHighH;
+            ranges.lowS = iLowS;
+            ranges.highS = iHighS;
+            ranges.lowV = iLowV;
+            ranges.highV = iHighV;
+            
+            hsvVector.push_back(ranges);
+            
+            iLowH = 0;
+            iHighH = 179;
+            iLowS = 0;
+            iHighS = 255;
+            iLowV = 0;
+            iHighV = 255;
+        }
+        else if((char)key == 'd')
+        {
+            printf("Done...\n");
             const string fileName = "BlobHSVColour.xml";
             FileStorage fs(fileName, FileStorage::WRITE);
-            Mat hsvData = (Mat_<int> (3,2) << iLowH, iHighH, iLowS, iHighS, iLowV, iHighV);
-            fs << "HSV_Data" << hsvData;
+            
+            Mat hsvSize = (Mat_<int> (1,1) << hsvVector.size());
+            fs << "HSV_Size" << hsvSize;
+            
+            for(int i = 0; i < hsvVector.size(); i++)
+            {
+                Mat hsvData = (Mat_<int> (3,2) << hsvVector[i].lowH, hsvVector[i].highH, hsvVector[i].lowS, hsvVector[i].highS, hsvVector[i].lowV, hsvVector[i].highV);
+                string dataName = "HSV_Data_" + to_string(i);
+                fs << dataName << hsvData;
+            }
             return;
         }
-            
+        else if((char)key == 'c')
+        {
+            printf("Cancelling...\n");
+            return;
+        }
+
     }
 }
