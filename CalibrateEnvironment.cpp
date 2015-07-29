@@ -3,45 +3,47 @@
 
 void CalibrateEnvironment(VideoCapture& inputCapture1, VideoCapture& inputCapture2)
 {
-  Size boardSize;
-  boardSize.width = BOARD_WIDTH;
-  boardSize.height = BOARD_HEIGHT;
+    Size boardSize;
+    boardSize.width = BOARD_WIDTH;
+    boardSize.height = BOARD_HEIGHT;
 
-  const string fileName1 = "CameraIntrinsics1.xml";
-  const string fileName2 = "CameraIntrinsics2.xml";
+    const string fileName1 = "CameraIntrinsics1.xml";
+    const string fileName2 = "CameraIntrinsics2.xml";
 
-  cout << "Attempting to open configuration files" << endl;
-  FileStorage fs1(fileName1, FileStorage::READ);
-  FileStorage fs2(fileName2, FileStorage::READ);
+    cout << "Attempting to open configuration files" << endl;
+    FileStorage fs1(fileName1, FileStorage::READ);
+    FileStorage fs2(fileName2, FileStorage::READ);
 
-  Mat cameraMatrix1, cameraMatrix2;
-  Mat distCoeffs1, distCoeffs2;
+    Mat cameraMatrix1, cameraMatrix2;
+    Mat distCoeffs1, distCoeffs2;
 
-  fs1["Camera_Matrix"] >> cameraMatrix1;
-  fs1["Distortion_Coefficients"] >> distCoeffs1;
-  fs2["Camera_Matrix"] >> cameraMatrix2;
-  fs2["Distortion_Coefficients"] >> distCoeffs2;
+    fs1["Camera_Matrix"] >> cameraMatrix1;
+    fs1["Distortion_Coefficients"] >> distCoeffs1;
+    fs2["Camera_Matrix"] >> cameraMatrix2;
+    fs2["Distortion_Coefficients"] >> distCoeffs2;
 
-  if (cameraMatrix1.data == NULL || distCoeffs1.data == NULL ||
+    if (cameraMatrix1.data == NULL || distCoeffs1.data == NULL ||
       cameraMatrix2.data == NULL || distCoeffs2.data == NULL)
-  {
-    printf("Could not load camera intrinsics\n");
-  }
-  printf("Loaded intrinsics\n");
+    {
+        printf("Could not load camera intrinsics\n");
+    }
+    else{
+        printf("Loaded intrinsics\n");
+    }
+    
+    Mat translation;
+    Mat image1, image2;
+    Mat mapX1, mapX2, mapY1, mapY2;
+    inputCapture1.read(image1);
+    Size imageSize = image1.size();
+    bool rotationCalibrated = false;
+    bool translationCalibrated = false;
+    bool found1 = false;
+    bool found2 = false;
 
-  Mat translation;
-  Mat image1, image2;
-  Mat mapX1, mapX2, mapY1, mapY2;
-  inputCapture1.read(image1);
-  Size imageSize = image1.size();
-  bool rotationCalibrated = false;
-  bool translationCalibrated = false;
-  bool found1 = false;
-  bool found2 = false;
 
-
-  while(inputCapture1.isOpened() && inputCapture2.isOpened())
-  {
+    while(inputCapture1.isOpened() && inputCapture2.isOpened())
+    {
     inputCapture1.read(image1);
     inputCapture2.read(image2);
 
@@ -221,5 +223,5 @@ void CalibrateEnvironment(VideoCapture& inputCapture1, VideoCapture& inputCaptur
     imshow("Camera1", image1);
     imshow("Camera2", image2);
 
-  }
+    }
 }
