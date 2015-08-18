@@ -20,13 +20,20 @@
 #define HALF_POINT_X 319.5
 #define HALF_POINT_Y 239.5
 
-#define CAMERA1 0
-#define CAMERA2 0
+#define CAMERA1 1
+#define CAMERA2 2
 
 using namespace cv;
 using namespace std;
 
 struct Point3D
+{
+    double x;
+    double y;
+    double z;
+};
+
+struct Vector3D
 {
     double x;
     double y;
@@ -49,6 +56,31 @@ void drawPoints(Mat &img1, Mat &img2, Point2f pt1, Point2f pt2, Scalar colour)
 {
     circle(img1, pt1, 5, colour);//Scalar(r, g, b));
     circle(img2, pt2, 5, colour);//Scalar(r, g, b));
+}
+
+double calculateAngle(Vector3D a, Vector3D b)
+{
+    double mag1 = sqrt(a.x * a.x + a.y * a.y + a.z * a.z);
+    double mag2 = sqrt(b.x * b.x + b.y * b.y + b.z * b.z);
+    
+    if(mag1 == 0 || mag2 == 0)
+    {
+        cout << "Vector magnitude = 0" << endl;
+        return 0;
+    }
+    double temp = (a.x * b.x + a.y * b.y + a.z * b.z)/(mag1 * mag2);
+    cout << "M1 " << mag1 << " M2 " << mag2 << endl;
+    cout << "Val: " << temp << endl;
+    
+    //return 3.14159265 - acos(temp) - 0.58;
+    return 3.14159265 + acos(temp) - 0.58;
+}
+
+void calculateVector(Point3D a, Point3D b, Vector3D &c)
+{
+    c.x = a.x - b.x;
+    c.y = a.y - b.y;
+    c.z = a.z - b.z;
 }
 
 
@@ -139,14 +171,12 @@ int main(int argc, char** argv)
             
             blobDetector.setHSVRanges(ranges);
             detector.push_back(blobDetector);
+            cout << "Set Blob " << i << endl;
         }
     }
-    
+    cout << "Initialising" << endl;
     Mat thresh1, thresh2, dst1, dst2;
-    //double area1, area2, conv1, conv2;
-    
-    //bool showThresh = false;
-    
+     
     while(inputCapture1.isOpened() && inputCapture2.isOpened())
     {
         
@@ -163,14 +193,17 @@ int main(int argc, char** argv)
         vector<bool> detectedVec;
         vector<KeyPoint> keypointVec1, keypointVec2;
         vector<Point3D> coords, coordsLast;
+        
         for(int i = 0; i < blobNum; i++)
         {
             KeyPoint keypoint1, keypoint2;
             bool detected1 = detector[i].getBlobCenter(image1, keypoint1);
             bool detected2 = detector[i].getBlobCenter(image2, keypoint2);
+
             double xPos = 0, yPos = 0, zPos = 0;
             double x1, x2, y1, y2, a, b, c;
 
+           
             x1 = keypoint1.pt.x - cx1;
             x2 = keypoint2.pt.x - cx2;
             y1 = keypoint1.pt.y - cy1;
@@ -193,23 +226,40 @@ int main(int argc, char** argv)
             detectedVec.push_back(detected1 && detected2);
             keypointVec1.push_back(keypoint1);
             keypointVec2.push_back(keypoint2);
+            
         }
         
         cv::drawKeypoints(image1, keypointVec1, dst1, cv::Scalar(0,255,255), cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
         cv::drawKeypoints(image2, keypointVec2, dst2, cv::Scalar(0,255,255), cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
-        
+
         for(int i = 0; i < blobNum; i++)
         {
-            string posStr = "X: " + to_string(coords[i].x) + "  Y: " + to_string(coords[i].y) + "  Z: " + to_string(coords[i].z);
-            int j = 0;
-            if(i > 1)
+            string posStr;
+            if(!detectedVec[i])
             {
-                i = 0;
-                j = 1;
+                posStr = "X: " + to_string(0.00000000) + "  Y: " + to_string(0.00000000) + "  Z: " + to_string(0.00000000);
             }
-            putText(dst1, posStr, Point(5, 15 * (i + 1)), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(j * 255, i * 255, 255 - i * 255));
+            else
+            {
+                posStr = "X: " + to_string(coords[i].x) + "  Y: " + to_string(coords[i].y) + "  Z: " + to_string(coords[i].z);
+            }
+            
+            putText(dst1, posStr, Point(5, 15 * (i + 1)), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 255, 255));
+            
         }
         
+        Vector3D vecA, vecB;
+        double jointAngle = 0;
+        
+        //cout << coords[0].x << " " << coords[0].y << " " << coords[0].z << endl;
+        calculateVector(coords[0], coords[1], vecA);
+        calculateVector(coords[1], coords[2], vecB);
+
+        jointAngle = calculateAngle(vecA, vecB);
+        
+        string angleStr = "Angle: " + to_string(jointAngle);
+        putText(dst2, angleStr, Point(5, 15), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 255, 255));
+        /*
         Point2f point1;
         Point2f point2;
         
@@ -219,11 +269,9 @@ int main(int argc, char** argv)
         drawPoints(dst1, dst2, point1, point2, Scalar(0, 255, 0));
         reprojectPoints(-100, -68, -100, point1, point2);
         drawPoints(dst1, dst2, point1, point2, Scalar(0, 0, 255));
-        
-        
+        */
         imshow("Camera2", dst2);
         imshow("Camera1", dst1);
-        
         
         char ch = waitKey(15);
         if(ch == 'e')
@@ -289,22 +337,27 @@ int main(int argc, char** argv)
         {
             for(int i = 0; i < blobNum; i++)
             {
-                cout << "center1: " << keypointVec1[i].pt << endl;
-                cout << "center2: " << keypointVec2[i].pt << endl;
-                
-                cout << "X: " << coords[i].x << endl;
-                cout << "Y: " << coords[i].y << endl;
-                cout << "Z: " << coords[i].z << endl;
-                
-                cout << "X movement: " << (coords[i].x - coordsLast[i].x) << endl;
-                cout << "Y movement: " << (coords[i].y - coordsLast[i].y) << endl;
-                cout << "Z movement: " << (coords[i].z - coordsLast[i].z) << endl;
-                
-                coordsLast[i].x = coords[i].x;
-                coordsLast[i].y = coords[i].y;
-                coordsLast[i].z = coords[i].z;
+                cout << "Blob " << i << ":" << endl;
+                if(detectedVec[i])
+                {
+                    cout << "center1: " << keypointVec1[i].pt << endl;
+                    cout << "center2: " << keypointVec2[i].pt << endl;
+                    
+                    cout << "X: " << coords[i].x << endl;
+                    cout << "Y: " << coords[i].y << endl;
+                    cout << "Z: " << coords[i].z << endl;
+                    
+                    cout << "X movement: " << (coords[i].x - coordsLast[i].x) << endl;
+                    cout << "Y movement: " << (coords[i].y - coordsLast[i].y) << endl;
+                    cout << "Z movement: " << (coords[i].z - coordsLast[i].z) << endl;
+                    
+                    coordsLast[i].x = coords[i].x;
+                    coordsLast[i].y = coords[i].y;
+                    coordsLast[i].z = coords[i].z;
+                }
             }
         }
+        
         /*else if(ch == 'b')
         {
             if(detected1)
@@ -327,5 +380,4 @@ int main(int argc, char** argv)
             
         }*/
     }
-    
 }
