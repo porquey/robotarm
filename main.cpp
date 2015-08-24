@@ -12,6 +12,7 @@
 #include "SetBlobColour.h"
 #include "BlobHueDetector.h"
 #include "CalibrateEnvironment.h"
+#include "ControlArm.h"
 
 #ifndef _CRT_SECURE_NO_WARNINGS
 # define _CRT_SECURE_NO_WARNINGS
@@ -20,25 +21,12 @@
 #define HALF_POINT_X 319.5
 #define HALF_POINT_Y 239.5
 
-#define CAMERA1 1
-#define CAMERA2 2
+#define CAMERA1 0
+#define CAMERA2 0
 
 using namespace cv;
 using namespace std;
 
-struct Point3D
-{
-    double x;
-    double y;
-    double z;
-};
-
-struct Vector3D
-{
-    double x;
-    double y;
-    double z;
-};
 
 float fx1, fy1, cx1, cy1, fx2, fy2, cx2, cy2, xTrans, yTrans, zTrans;
 
@@ -58,30 +46,7 @@ void drawPoints(Mat &img1, Mat &img2, Point2f pt1, Point2f pt2, Scalar colour)
     circle(img2, pt2, 5, colour);//Scalar(r, g, b));
 }
 
-double calculateAngle(Vector3D a, Vector3D b)
-{
-    double mag1 = sqrt(a.x * a.x + a.y * a.y + a.z * a.z);
-    double mag2 = sqrt(b.x * b.x + b.y * b.y + b.z * b.z);
-    
-    if(mag1 == 0 || mag2 == 0)
-    {
-        cout << "Vector magnitude = 0" << endl;
-        return 0;
-    }
-    double temp = (a.x * b.x + a.y * b.y + a.z * b.z)/(mag1 * mag2);
-    cout << "M1 " << mag1 << " M2 " << mag2 << endl;
-    cout << "Val: " << temp << endl;
-    
-    //return 3.14159265 - acos(temp) - 0.58;
-    return 3.14159265 + acos(temp) - 0.58;
-}
 
-void calculateVector(Point3D a, Point3D b, Vector3D &c)
-{
-    c.x = a.x - b.x;
-    c.y = a.y - b.y;
-    c.z = a.z - b.z;
-}
 
 
 int main(int argc, char** argv)
@@ -137,6 +102,7 @@ int main(int argc, char** argv)
     Mat hsvSize;
     int blobNum = 0;
     
+    
     vector<BlobHueDetector> detector;
     
     bfs["HSV_Size"] >> hsvSize;
@@ -176,9 +142,43 @@ int main(int argc, char** argv)
     }
     cout << "Initialising" << endl;
     Mat thresh1, thresh2, dst1, dst2;
-     
+
+    clock_t beginTime = clock();;
+    int frames = 0;
+    /*
+    ControlArm control(2, 2, 2);
+    vector<Point3D> joints;
+    Point3D target(0,3,0);
+    
+    Point3D joint(0,0,0);
+    joints.push_back(joint);
+    joint = *new Point3D(0,2,0);
+    joints.push_back(joint);
+    joint = *new Point3D(2,2,0);
+    joints.push_back(joint);
+    joint = *new Point3D(2,4,0);
+    joints.push_back(joint);
+    control.InitFuzzyController();
+    control.SetArmPose(joints);
+    control.SetTarget(target);
+    double angles[3];
+    control.GetArmPose(angles);
+    Point3D diff(-1,0,1);
+    control.UpdateArmPose(target + diff);
+
+    while(inputCapture1.isOpened())
+    {
+    }
+    */
     while(inputCapture1.isOpened() && inputCapture2.isOpened())
     {
+        frames++;
+        if(float(clock() - beginTime)/CLOCKS_PER_SEC >= 1)
+        {
+            //cout << "FPS: " << frames << " " << float(clock() - beginTime)/CLOCKS_PER_SEC <<endl;
+            frames = 0;
+            beginTime = clock();
+        }
         
         // Read and transform images from cameras
         inputCapture1.read(image1);
@@ -247,7 +247,7 @@ int main(int argc, char** argv)
             putText(dst1, posStr, Point(5, 15 * (i + 1)), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 255, 255));
             
         }
-        
+        /*
         Vector3D vecA, vecB;
         double jointAngle = 0;
         
@@ -259,7 +259,7 @@ int main(int argc, char** argv)
         
         string angleStr = "Angle: " + to_string(jointAngle);
         putText(dst2, angleStr, Point(5, 15), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 255, 255));
-        /*
+        
         Point2f point1;
         Point2f point2;
         
@@ -379,5 +379,7 @@ int main(int argc, char** argv)
             }
             
         }*/
+        
     }
+    
 }
