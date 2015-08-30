@@ -13,9 +13,9 @@ link2(l2)
 
 void ControlArm::SetArmPose(vector<Point3D> joints)
 {
-    if(joints.size() == 5)
+    if(joints.size() == 4)
     {
-        for(int i = 0; i < 5; i++)
+        for(int i = 0; i < 4; i++)
         {
             jointPositions[i] = joints[i];
         }
@@ -27,7 +27,7 @@ void ControlArm::CalculateLinkLengths()
     link0 = CalculateLength(CalculateVector(jointPositions[1], jointPositions[0]));
     link1 = CalculateLength(CalculateVector(jointPositions[2], jointPositions[1]));
     link2 = CalculateLength(CalculateVector(jointPositions[3], jointPositions[2]));
-    
+    cout << "Link 0: " << link0 << " Link 1: " << link1 << " Link 2: " << link2 << endl;
 }
 
 void ControlArm::GetArmPose(double angles[3])
@@ -35,9 +35,27 @@ void ControlArm::GetArmPose(double angles[3])
     angles = jointAngles;
 }
 
+void ControlArm::GetCurrentPose(double angles[3])
+{
+    double x = jointPositions[3].x - jointPositions[0].x;
+    double z = jointPositions[3].z - jointPositions[0].z;
+    
+    currentAngles[0] = atan2(z, x);
+    
+    currentAngles[1] = CalculateAngle(CalculateVector(jointPositions[1], jointPositions[0]), CalculateVector(jointPositions[1], jointPositions[2]));
+    
+    currentAngles[2] = 3.14159 - CalculateAngle(CalculateVector(jointPositions[2], jointPositions[1]), CalculateVector(jointPositions[2], jointPositions[3]));
+    
+    cout << "Angle 0 " << currentAngles[0] << " Angle 1 " << currentAngles[1] << " Angle 2 " << currentAngles[2] << endl;
+
+    angles = currentAngles;
+}
+
 void ControlArm::SetTarget(Point3D target)
 {
     targetPosition = target;
+    cout << "TARGET: " << targetPosition.x << " " << targetPosition.y << " " << targetPosition.z << endl;
+
     if(CalculateLength(CalculateVector(targetPosition, jointPositions[1])) > link1 + link2)
     {
         Point3D pointDiff = targetPosition - jointPositions[1];
@@ -51,8 +69,7 @@ void ControlArm::SetTarget(Point3D target)
         cout << "OUT OF REACH. NEW TARGET: " << targetPosition.x << " " << targetPosition.y << " " << targetPosition.z << endl;
     }
     FindInverseKinematics();
-    cout << "LINK0: " << link0 << " LINK1: " << link1 << " LINK2: " << endl;
-    cout << "ANGLE0: " << jointAngles[0] << " ANGLE1: " << jointAngles[1] << " ANGLE2: " << jointAngles[2] << endl;
+    cout << "NEW ANGLE0: " << jointAngles[0] << " ANGLE1: " << jointAngles[1] << " ANGLE2: " << jointAngles[2] << endl;
 }
 
 void ControlArm::UpdateArmPose(Point3D detected)
@@ -92,12 +109,9 @@ double ControlArm::CalculateAngle(Vector3D a, Vector3D b)
         cout << "Vector magnitude = 0" << endl;
         return 0;
     }
-    double temp = (a.x * b.x + a.y * b.y + a.z * b.z)/(mag1 * mag2);
-    cout << "M1 " << mag1 << " M2 " << mag2 << endl;
-    cout << "Val: " << temp << endl;
+    double angle = acos((a.x * b.x + a.y * b.y + a.z * b.z)/(mag1 * mag2));
     
-    //return 3.14159265 - acos(temp) - 0.58;
-    return 3.14159265 + acos(temp) - 0.58;
+    return angle;
 }
 
 Vector3D ControlArm::CalculateVector(Point3D a, Point3D b)

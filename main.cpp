@@ -21,14 +21,17 @@
 #define HALF_POINT_X 319.5
 #define HALF_POINT_Y 239.5
 
-#define CAMERA1 0
-#define CAMERA2 0
+#define CAMERA1 1
+#define CAMERA2 2
 
 using namespace cv;
 using namespace std;
 
 
 float fx1, fy1, cx1, cy1, fx2, fy2, cx2, cy2, xTrans, yTrans, zTrans;
+
+double sum1 = 0, sum2 = 0, sum3 = 0;
+int fcount = 0;
 
 void reprojectPoints(double x, double y, double z, Point2f &pt1, Point2f &pt2)
 {
@@ -104,6 +107,7 @@ int main(int argc, char** argv)
     
     
     vector<BlobHueDetector> detector;
+    BlobHueDetector targetDetector;
     
     bfs["HSV_Size"] >> hsvSize;
 
@@ -112,7 +116,7 @@ int main(int argc, char** argv)
         printf("No BlobHSVColour data\n");
         
         BlobHueDetector blobDetector;
-        blobDetector.setDefaultHSVRanges();
+        blobDetector.SetDefaultHSVRanges();
         detector.push_back(blobDetector);
     }
     else
@@ -135,50 +139,43 @@ int main(int argc, char** argv)
             ranges.lowV = hsvData.at<int>(2, 0);
             ranges.highV = hsvData.at<int>(2, 1);
             
-            blobDetector.setHSVRanges(ranges);
+            blobDetector.SetHSVRanges(ranges);
             detector.push_back(blobDetector);
             cout << "Set Blob " << i << endl;
         }
+        Mat targetData;
+        bfs["Target_Data"] >> targetData;
+        HSVRanges targetRanges;
+        targetRanges.lowH = targetData.at<int>(0, 0);
+        targetRanges.highH = targetData.at<int>(0, 1);
+        targetRanges.lowS = targetData.at<int>(1, 0);
+        targetRanges.highS = targetData.at<int>(1, 1);
+        targetRanges.lowV = targetData.at<int>(2, 0);
+        targetRanges.highV = targetData.at<int>(2, 1);
+        
+        targetDetector.SetHSVRanges(targetRanges);
+
+        
     }
     cout << "Initialising" << endl;
     Mat thresh1, thresh2, dst1, dst2;
 
     clock_t beginTime = clock();;
-    int frames = 0;
-    /*
-    ControlArm control(2, 2, 2);
-    vector<Point3D> joints;
-    Point3D target(0,3,0);
+    //int frames = 0;
     
-    Point3D joint(0,0,0);
-    joints.push_back(joint);
-    joint = *new Point3D(0,2,0);
-    joints.push_back(joint);
-    joint = *new Point3D(2,2,0);
-    joints.push_back(joint);
-    joint = *new Point3D(2,4,0);
-    joints.push_back(joint);
-    control.InitFuzzyController();
-    control.SetArmPose(joints);
-    control.SetTarget(target);
-    double angles[3];
-    control.GetArmPose(angles);
-    Point3D diff(-1,0,1);
-    control.UpdateArmPose(target + diff);
+    ControlArm control;
 
-    while(inputCapture1.isOpened())
-    {
-    }
-    */
+    
     while(inputCapture1.isOpened() && inputCapture2.isOpened())
     {
-        frames++;
+        beginTime = clock();
+        /*frames++;
         if(float(clock() - beginTime)/CLOCKS_PER_SEC >= 1)
         {
             //cout << "FPS: " << frames << " " << float(clock() - beginTime)/CLOCKS_PER_SEC <<endl;
             frames = 0;
             beginTime = clock();
-        }
+        }*/
         
         // Read and transform images from cameras
         inputCapture1.read(image1);
@@ -190,6 +187,11 @@ int main(int argc, char** argv)
         t1.release();
         t2.release();
         
+        //cout << "Image remapping: " << float(clock() - beginTime)/CLOCKS_PER_SEC << endl;
+        sum1 += float(clock() - beginTime)/CLOCKS_PER_SEC;
+        
+        beginTime = clock();
+        
         vector<bool> detectedVec;
         vector<KeyPoint> keypointVec1, keypointVec2;
         vector<Point3D> coords, coordsLast;
@@ -197,8 +199,7 @@ int main(int argc, char** argv)
         for(int i = 0; i < blobNum; i++)
         {
             KeyPoint keypoint1, keypoint2;
-            bool detected1 = detector[i].getBlobCenter(image1, keypoint1);
-            bool detected2 = detector[i].getBlobCenter(image2, keypoint2);
+            bool detected = detector[i].GetBlobCentres(image1, image2, keypoint1, keypoint2);
 
             double xPos = 0, yPos = 0, zPos = 0;
             double x1, x2, y1, y2, a, b, c;
@@ -223,14 +224,49 @@ int main(int argc, char** argv)
             coordTemp.y = yPos;
             coordTemp.z = zPos;
             coords.push_back(coordTemp);
-            detectedVec.push_back(detected1 && detected2);
+            detectedVec.push_back(detected);
             keypointVec1.push_back(keypoint1);
             keypointVec2.push_back(keypoint2);
             
         }
         
-        cv::drawKeypoints(image1, keypointVec1, dst1, cv::Scalar(0,255,255), cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
-        cv::drawKeypoints(image2, keypointVec2, dst2, cv::Scalar(0,255,255), cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
+        KeyPoint keypoint1, keypoint2;
+        targetDetector.GetBlobCentres(image1, image2, keypoint1, keypoint2);
+        
+        double xPos = 0, yPos = 0, zPos = 0;
+        double x1, x2, y1, y2, a, b, c;
+        
+        x1 = keypoint1.pt.x - cx1;
+        x2 = keypoint2.pt.x - cx2;
+        y1 = keypoint1.pt.y - cy1;
+        y2 = keypoint2.pt.y - cy2;
+        
+        a = (x1)/fx1;
+        b = (x2)/fx2;
+        c = a*b;
+        
+        xPos = (c*xTrans + a*zTrans)/(1+c);
+        zPos = (b*xTrans + zTrans)/(1+c);
+        yPos = -((y1)/fy1) * zPos;
+        zPos -= zTrans;
+        
+        Point3D targetCoord;
+        targetCoord.x = xPos;
+        targetCoord.y = yPos;
+        targetCoord.z = zPos;
+        keypointVec1.push_back(keypoint1);
+        keypointVec2.push_back(keypoint2);
+        
+
+        
+        //cout << "Blob detection: " << float(clock() - beginTime)/CLOCKS_PER_SEC << endl;
+        sum2 += float(clock() - beginTime)/CLOCKS_PER_SEC;
+
+        beginTime = clock();
+        
+        
+        cv::drawKeypoints(image1, keypointVec1, dst1, cv::Scalar(0,255,255), cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
+        cv::drawKeypoints(image2, keypointVec2, dst2, cv::Scalar(0,255,255), cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
 
         for(int i = 0; i < blobNum; i++)
         {
@@ -247,6 +283,11 @@ int main(int argc, char** argv)
             putText(dst1, posStr, Point(5, 15 * (i + 1)), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 255, 255));
             
         }
+        
+        string posStr = "X: " + to_string(targetCoord.x) + "  Y: " + to_string(targetCoord.y) + "  Z: " + to_string(targetCoord.z);
+
+        putText(dst1, posStr, Point(5, 15 * 4), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 255, 255));
+
         /*
         Vector3D vecA, vecB;
         double jointAngle = 0;
@@ -259,19 +300,52 @@ int main(int argc, char** argv)
         
         string angleStr = "Angle: " + to_string(jointAngle);
         putText(dst2, angleStr, Point(5, 15), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 255, 255));
-        
+        */
+        /*
         Point2f point1;
         Point2f point2;
         
-        reprojectPoints(0, -68, 0, point1, point2);
-        drawPoints(dst1, dst2, point1, point2, Scalar(255, 0, 0));
-        reprojectPoints(100, -68, 100, point1, point2);
-        drawPoints(dst1, dst2, point1, point2, Scalar(0, 255, 0));
-        reprojectPoints(-100, -68, -100, point1, point2);
-        drawPoints(dst1, dst2, point1, point2, Scalar(0, 0, 255));
+        double yOffset = 0;
+        
+        for(int i = 0; i < 5; i++)
+        {
+            for(int j = 0; j < 1; j++)
+            {
+                reprojectPoints(-200 + i * 100, yOffset, -200 + j * 100, point1, point2);
+                Scalar pixel = Scalar(255 - i * 50, 255 - j * 50, 255);
+                drawPoints(dst1, dst2, point1, point2, pixel);
+            }
+        }
         */
+        
+        
+        
+        
+        
+        
+        
         imshow("Camera2", dst2);
         imshow("Camera1", dst1);
+                
+        Point3D base = coords[0];
+        
+        base.y -= 100;
+        
+        coords.insert(coords.begin(), base);
+        control.SetArmPose(coords);
+        control.CalculateLinkLengths();
+        
+        double currAngles[3];
+        control.GetCurrentPose(currAngles);
+
+        control.SetTarget(targetCoord);
+        
+        double angles[3];
+        control.GetArmPose(angles);
+        
+        
+        sum3 += float(clock() - beginTime)/CLOCKS_PER_SEC;
+        beginTime = clock();
         
         char ch = waitKey(15);
         if(ch == 'e')
@@ -292,7 +366,7 @@ int main(int argc, char** argv)
                 printf("No BlobHSVColour data\n");
                 
                 BlobHueDetector blobDetector;
-                blobDetector.setDefaultHSVRanges();
+                blobDetector.SetDefaultHSVRanges();
                 detector.push_back(blobDetector);
             }
             else
@@ -315,25 +389,26 @@ int main(int argc, char** argv)
                     ranges.lowV = hsvData.at<int>(2, 0);
                     ranges.highV = hsvData.at<int>(2, 1);
                     
-                    blobDetector.setHSVRanges(ranges);
+                    blobDetector.SetHSVRanges(ranges);
                     detector.push_back(blobDetector);
                 }
+                
+                Mat targetData;
+                bfs["Target_Data"] >> targetData;
+                HSVRanges targetRanges;
+                targetRanges.lowH = targetData.at<int>(0, 0);
+                targetRanges.highH = targetData.at<int>(0, 1);
+                targetRanges.lowS = targetData.at<int>(1, 0);
+                targetRanges.highS = targetData.at<int>(1, 1);
+                targetRanges.lowV = targetData.at<int>(2, 0);
+                targetRanges.highV = targetData.at<int>(2, 1);
+                
+                targetDetector.SetHSVRanges(targetRanges);
+                
             }
             destroyAllWindows();
         }
-        /*else if(ch == 't')
-        {
-            if(showThresh)
-            {
-                showThresh = false;
-                destroyAllWindows();
-            }
-            else
-            {
-                showThresh = true;
-            }
-        }*/
-        else if(ch == 'p')
+        /*else if(ch == 'p')
         {
             for(int i = 0; i < blobNum; i++)
             {
@@ -356,6 +431,19 @@ int main(int argc, char** argv)
                     coordsLast[i].z = coords[i].z;
                 }
             }
+        }*/
+        //cout << "Draw on image: " << float(clock() - beginTime)/CLOCKS_PER_SEC << endl;
+        
+        fcount++;
+        //cout << fcount << endl;
+        if(fcount == 100)
+        {
+            cout << "REMAP average: " << sum1/100 << endl;
+            cout << "DETECT average: " << sum2/100 << endl;
+            cout << "DRAW average: " << sum3/100 << endl;
+            fcount = 0;
+            sum1 = sum2 = sum3 = 0;
+            //break;
         }
         
         /*else if(ch == 'b')

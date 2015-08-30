@@ -35,6 +35,7 @@ public:
     void SetArmPose(vector<Point3D> joints);
     void CalculateLinkLengths();
     void GetArmPose(double angles[3]);
+    void GetCurrentPose(double angles[3]);
     void SetTarget(Point3D target);
     void UpdateArmPose(Point3D detected);
     void InitFuzzyController();
@@ -52,6 +53,7 @@ private:
     double link0, link1, link2;
     Point3D jointPositions[5];
     double jointAngles[3];
+    double currentAngles[3];
     Point3D targetPosition;
     vector<FuzzyRule> fuzzySet;
     

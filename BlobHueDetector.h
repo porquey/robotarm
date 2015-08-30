@@ -17,14 +17,17 @@ public:
      
      BlobHueDetector(cv::SimpleBlobDetector::Params &parameters, int lowH, int highH, int lowS, int highS, int lowV, int highV);
      */
-    bool getBlobCenter(cv::Mat &src, cv::KeyPoint &keypoint);
+    bool GetBlobCentres(cv::Mat &src1, cv::Mat &src2, cv::KeyPoint &keypoint1, cv::KeyPoint &keypoint2);
+    bool GetBlob(cv::Mat &src, cv::KeyPoint &keypoint);
     //bool getBlobData(double &area, double &convexity);
-    void setHSVRanges(const HSVRanges range);
-    void setDefaultHSVRanges();
+    void SetHSVRanges(const HSVRanges range);
+    void SetDefaultHSVRanges();
 private:
     BetterBlobDetector detector;
     cv::SimpleBlobDetector::Params params;
     int iLowH, iHighH, iLowS, iHighS, iLowV, iHighV;
+    int counter1, counter2;
+    cv::Point last1, last2;
     
     //bool blobDetected;
     //double blobArea;

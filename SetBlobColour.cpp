@@ -27,6 +27,7 @@ void SetBlobColour(VideoCapture& inputCapture1, VideoCapture& inputCapture2)
     Mat src1, src2;
 
     vector<HSVRanges> hsvVector;
+    HSVRanges target;
     
     while(inputCapture1.isOpened())
     {
@@ -75,7 +76,7 @@ void SetBlobColour(VideoCapture& inputCapture1, VideoCapture& inputCapture2)
         
         if((char)key == 't')
         {
-            iHighH += 5;
+            iHighH += 2;
             cout << "H: " << iHighH << " - " << iLowH << endl;
             cout << "S: " << iHighS << " - " << iLowS << endl;
             cout << "V: " << iHighV << " - " << iLowV << endl;
@@ -83,41 +84,41 @@ void SetBlobColour(VideoCapture& inputCapture1, VideoCapture& inputCapture2)
         }
         else if((char)key == 'y')
         {
-            iLowH += 5;
+            iLowH += 2;
             cout << "H: " << iHighH << " - " << iLowH << endl;
             cout << "S: " << iHighS << " - " << iLowS << endl;
             cout << "V: " << iHighV << " - " << iLowV << endl;
         }
         else if((char)key == 'u')
         {
-            iHighS += 5;
+            iHighS += 2;
             cout << "H: " << iHighH << " - " << iLowH << endl;
             cout << "S: " << iHighS << " - " << iLowS << endl;
             cout << "V: " << iHighV << " - " << iLowV << endl;
         }
         else if((char)key == 'i')
         {
-            iLowS += 5;
+            iLowS += 2;
             cout << "H: " << iHighH << " - " << iLowH << endl;
             cout << "S: " << iHighS << " - " << iLowS << endl;
             cout << "V: " << iHighV << " - " << iLowV << endl;
         }
         else if((char)key == 'o')
         {
-            iHighV += 5;
+            iHighV += 2;
             cout << "H: " << iHighH << " - " << iLowH << endl;
             cout << "S: " << iHighS << " - " << iLowS << endl;
             cout << "V: " << iHighV << " - " << iLowV << endl;
         }
         else if((char)key == 'p')
         {
-            iLowV += 5;
+            iLowV += 2;
             cout << "H: " << iHighH << " - " << iLowH << endl;
             cout << "S: " << iHighS << " - " << iLowS << endl;
             cout << "V: " << iHighV << " - " << iLowV << endl;
         }else if((char)key == 'g')
         {
-            iHighH -= 5;
+            iHighH -= 2;
             cout << "H: " << iHighH << " - " << iLowH << endl;
             cout << "S: " << iHighS << " - " << iLowS << endl;
             cout << "V: " << iHighV << " - " << iLowV << endl;
@@ -125,35 +126,35 @@ void SetBlobColour(VideoCapture& inputCapture1, VideoCapture& inputCapture2)
         }
         else if((char)key == 'h')
         {
-            iLowH -= 5;
+            iLowH -= 2;
             cout << "H: " << iHighH << " - " << iLowH << endl;
             cout << "S: " << iHighS << " - " << iLowS << endl;
             cout << "V: " << iHighV << " - " << iLowV << endl;
         }
         else if((char)key == 'j')
         {
-            iHighS -= 5;
+            iHighS -= 2;
             cout << "H: " << iHighH << " - " << iLowH << endl;
             cout << "S: " << iHighS << " - " << iLowS << endl;
             cout << "V: " << iHighV << " - " << iLowV << endl;
         }
         else if((char)key == 'k')
         {
-            iLowS -= 5;
+            iLowS -= 2;
             cout << "H: " << iHighH << " - " << iLowH << endl;
             cout << "S: " << iHighS << " - " << iLowS << endl;
             cout << "V: " << iHighV << " - " << iLowV << endl;
         }
         else if((char)key == 'l')
         {
-            iHighV -= 5;
+            iHighV -= 2;
             cout << "H: " << iHighH << " - " << iLowH << endl;
             cout << "S: " << iHighS << " - " << iLowS << endl;
             cout << "V: " << iHighV << " - " << iLowV << endl;
         }
         else if((char)key == ';')
         {
-            iLowV -= 5;
+            iLowV -= 2;
             cout << "H: " << iHighH << " - " << iLowH << endl;
             cout << "S: " << iHighS << " - " << iLowS << endl;
             cout << "V: " << iHighV << " - " << iLowV << endl;
@@ -179,6 +180,24 @@ void SetBlobColour(VideoCapture& inputCapture1, VideoCapture& inputCapture2)
             iLowV = 0;
             iHighV = 255;
         }
+        else if((char)key == 'a')
+        {
+            printf("Target saved...\n");
+            
+            target.lowH = iLowH;
+            target.highH = iHighH;
+            target.lowS = iLowS;
+            target.highS = iHighS;
+            target.lowV = iLowV;
+            target.highV = iHighV;
+            
+            iLowH = 0;
+            iHighH = 179;
+            iLowS = 0;
+            iHighS = 255;
+            iLowV = 0;
+            iHighV = 255;
+        }
         else if((char)key == 'd')
         {
             printf("Done...\n");
@@ -194,6 +213,8 @@ void SetBlobColour(VideoCapture& inputCapture1, VideoCapture& inputCapture2)
                 string dataName = "HSV_Data_" + to_string(i);
                 fs << dataName << hsvData;
             }
+            Mat targetData = (Mat_<int> (3,2) << target.lowH, target.highH, target.lowS, target.highS, target.lowV, target.highV);
+            fs << "Target_Data" << targetData;
             return;
         }
         else if((char)key == 'c')
