@@ -16,9 +16,23 @@ using namespace cv;
 using namespace std;
 
 #define CAPTURE_DELAY 1000
-#define SQUARE_SIZE 36.6
-#define SQUARE_SIZE_SMALL 25.2
+#define SQUARE_SIZE 40
 #define BOARD_WIDTH 9
 #define BOARD_HEIGHT 6
 
+class BoardSettings{
+public:
+    int cornerNum;
+    int squareSize;
+    Size boardSize;
+};
+
 void CalibrateEnvironment(VideoCapture& inputCapture1, VideoCapture& inputCapture2);
+
+static bool retrieveChessboardCorners(BoardSettings s, vector<vector<Point2f> >& imagePoints1,
+                                      vector<vector<Point2f> >& imagePoints2, VideoCapture videoFeed1,
+                                      VideoCapture videoFeed2, int iterations, bool remap, Mat mapX1,
+                                      Mat mapY1, Mat mapX2, Mat mapY2);
+
+
+static void calcBoardCornerPositions(Size boardSize, float squareSize, vector<Point3f>& corners);

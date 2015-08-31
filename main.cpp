@@ -33,6 +33,8 @@ float fx1, fy1, cx1, cy1, fx2, fy2, cx2, cy2, xTrans, yTrans, zTrans;
 double sum1 = 0, sum2 = 0, sum3 = 0;
 int fcount = 0;
 
+int reprojectVal = 0, height = 0;
+
 void reprojectPoints(double x, double y, double z, Point2f &pt1, Point2f &pt2)
 {
     pt1.x = (x*fx1/(z + zTrans)) + cx1;
@@ -54,7 +56,7 @@ void drawPoints(Mat &img1, Mat &img2, Point2f pt1, Point2f pt2, Scalar colour)
 
 int main(int argc, char** argv)
 {
-    Mat cameraMatrix1, cameraMatrix2, mapX1, mapY1, mapX2, mapY2, translation;
+    Mat cameraMatrix1, cameraMatrix2, mapX1, mapY1, mapX2, mapY2, translation; 
     
     const string calibFileName = "EnvironmentCalibration.xml";
     
@@ -301,22 +303,22 @@ int main(int argc, char** argv)
         string angleStr = "Angle: " + to_string(jointAngle);
         putText(dst2, angleStr, Point(5, 15), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 255, 255));
         */
-        /*
+        
         Point2f point1;
         Point2f point2;
         
-        double yOffset = 0;
-        
+        double yOffset = height * 100;
+        int j = reprojectVal;
         for(int i = 0; i < 5; i++)
         {
-            for(int j = 0; j < 1; j++)
-            {
+            //for(int j = 2; j < 3; j++)
+            //{
                 reprojectPoints(-200 + i * 100, yOffset, -200 + j * 100, point1, point2);
                 Scalar pixel = Scalar(255 - i * 50, 255 - j * 50, 255);
                 drawPoints(dst1, dst2, point1, point2, pixel);
-            }
+            //}
         }
-        */
+        
         
         
         
@@ -446,28 +448,38 @@ int main(int argc, char** argv)
             //break;
         }
         
-        /*else if(ch == 'b')
+        else if(ch == '1')
         {
-            if(detected1)
-            {
-                cout << "Cam1 : blob area: " << area1 << " convexity: " << conv1 << endl;
-            }
-            else
-            {
-                cout << "Cam1 : no blob" << endl;
-            }
-            
-            if(detected2)
-            {
-                cout << "Cam2 : blob area: " << area2 << " convexity: " << conv2 << endl;
-            }
-            else
-            {
-                cout << "Cam2 : no blob" << endl;
-            }
-            
-        }*/
-        
+            reprojectVal = 0;
+        }
+        else if(ch == '2')
+        {
+            reprojectVal = 1;
+        }
+        else if(ch == '3')
+        {
+            reprojectVal = 2;
+        }
+        else if(ch == '4')
+        {
+            reprojectVal = 3;
+        }
+        else if(ch == '5')
+        {
+            reprojectVal = 4;
+        }
+        else if(ch == '-')
+        {
+            height++;
+        }
+        else if(ch == '=')
+        {
+            height--;
+        }
+        else if((int)ch == 27)
+        {
+            return 0;
+        }
     }
     
 }

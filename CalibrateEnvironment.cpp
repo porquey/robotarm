@@ -6,29 +6,29 @@ void CalibrateEnvironment(VideoCapture& inputCapture1, VideoCapture& inputCaptur
     Size boardSize;
     boardSize.width = BOARD_WIDTH;
     boardSize.height = BOARD_HEIGHT;
-
+    
     const string fileName1 = "CameraIntrinsics1.xml";
     const string fileName2 = "CameraIntrinsics2.xml";
-
+    
     cout << "Attempting to open configuration files" << endl;
     FileStorage fs1(fileName1, FileStorage::READ);
     FileStorage fs2(fileName2, FileStorage::READ);
-
+    
     Mat cameraMatrix1, cameraMatrix2;
     Mat distCoeffs1, distCoeffs2;
-
+    
     fs1["Camera_Matrix"] >> cameraMatrix1;
     fs1["Distortion_Coefficients"] >> distCoeffs1;
     fs2["Camera_Matrix"] >> cameraMatrix2;
     fs2["Distortion_Coefficients"] >> distCoeffs2;
-
+    
     if (cameraMatrix1.data == NULL || distCoeffs1.data == NULL ||
-      cameraMatrix2.data == NULL || distCoeffs2.data == NULL)
+        cameraMatrix2.data == NULL || distCoeffs2.data == NULL)
     {
-        printf("Could not load camera intrinsics\n");
+        cerr << "Could not load camera intrinsics\n" << endl;
     }
     else{
-        printf("Loaded intrinsics\n");
+        cerr << "Loaded intrinsics\n" << endl;
     }
     
     Mat translation;
@@ -37,191 +37,238 @@ void CalibrateEnvironment(VideoCapture& inputCapture1, VideoCapture& inputCaptur
     inputCapture1.read(image1);
     Size imageSize = image1.size();
     bool rotationCalibrated = false;
-    bool translationCalibrated = false;
-    bool found1 = false;
-    bool found2 = false;
-
-
+    
     while(inputCapture1.isOpened() && inputCapture2.isOpened())
     {
-    inputCapture1.read(image1);
-    inputCapture2.read(image2);
+        inputCapture1.read(image1);
+        inputCapture2.read(image2);
+        
+        if (rotationCalibrated)
+        {
+            Mat t1 = image1.clone();
+            Mat t2 = image2.clone();
+            remap(t1, image1, mapX1, mapY1, INTER_LINEAR);
+            remap(t2, image2, mapX2, mapY2, INTER_LINEAR);
+            t1.release();
+            t2.release();
+        }
+        
+        char c = waitKey(15);
+        if (c == 'c')
+        {
+            printf("Cancelling...\n");
+            return;
+        }
+        else if(c == 's' && rotationCalibrated)
+        {
+            printf("Saving...\n");
+            const string fileName = "EnvironmentCalibration.xml";
+            FileStorage fs(fileName, FileStorage::WRITE);
+            fs << "Camera_Matrix_1" <<  getOptimalNewCameraMatrix(cameraMatrix1, distCoeffs1, imageSize, 1,imageSize, 0);
+            fs << "Camera_Matrix_2" <<  getOptimalNewCameraMatrix(cameraMatrix2, distCoeffs2, imageSize, 1, imageSize, 0);
+            fs << "Mapping_X_1" << mapX1;
+            fs << "Mapping_Y_1" << mapY1;
+            fs << "Mapping_X_2" << mapX2;
+            fs << "Mapping_Y_2" << mapY2;
+            fs << "Translation" << translation;
+            return;
+        }
+        else if (c == 'r')
+        {
+            BoardSettings s;
+            s.boardSize.width = BOARD_WIDTH;
+            s.boardSize.height = BOARD_HEIGHT;
+            s.cornerNum = s.boardSize.width * s.boardSize.height;
+            s.squareSize = (float)SQUARE_SIZE;
+            
+            vector<Point3f> objectPoints;
+            vector<vector<Point2f> > imagePoints1, imagePoints2,  imagePoints3, imagePoints4;
+            
+            if (retrieveChessboardCorners(s, imagePoints1, imagePoints2, inputCapture1, inputCapture2, 5, 0, mapX1, mapY1, mapX2, mapY2)){
+                
+                vector<vector<Point3f> > objectPoints(1);
+                calcBoardCornerPositions(s.boardSize, s.squareSize, objectPoints[0]);
+                objectPoints.resize(imagePoints1.size(),objectPoints[0]);
+                
+                Mat R, T, E, F;
+                Mat rmat1, rmat2, rvec;
 
-    if (rotationCalibrated)
-    {
-      Mat t1 = image1.clone();
-      Mat t2 = image2.clone();
-      remap(t1, image1, mapX1, mapY1, INTER_LINEAR);
-      remap(t2, image2, mapX2, mapY2, INTER_LINEAR);
-      t1.release();
-      t2.release();
+                double rms = stereoCalibrate(objectPoints, imagePoints1, imagePoints2, cameraMatrix1, distCoeffs1, cameraMatrix2, distCoeffs2, imageSize, R, T, E, F,
+                                TermCriteria( CV_TERMCRIT_EPS+CV_TERMCRIT_ITER, 1000, 0.01),
+                                CV_CALIB_FIX_INTRINSIC);
+                
+                cerr << "Reprojection error reported by camera: " << rms << endl;
+                
+                Rodrigues(R, rvec);
+                cerr << "Origional rvec: " << rvec << endl;
+                rvec.at<double>(1,0) -= 1.570796327;
+                rvec = rvec/2;
+                Rodrigues(rvec, rmat1);
+                invert(rmat1,rmat2);
+                
+                initUndistortRectifyMap(cameraMatrix1, distCoeffs1, rmat1,
+                                        getOptimalNewCameraMatrix(cameraMatrix1, distCoeffs1, imageSize, 1,imageSize, 0), imageSize, CV_32FC1, mapX1, mapY1);
+                initUndistortRectifyMap(cameraMatrix2, distCoeffs2, rmat2,
+                                        getOptimalNewCameraMatrix(cameraMatrix2, distCoeffs2, imageSize, 1, imageSize, 0), imageSize, CV_32FC1, mapX2, mapY2);
+                
+                
+                Mat pointsMat1 = Mat(imagePoints1);
+                Mat pointsMat2 = Mat(imagePoints2);
+                
+                
+                undistortPoints(pointsMat1, imagePoints1, cameraMatrix1, distCoeffs1, rmat1,getOptimalNewCameraMatrix(cameraMatrix1, distCoeffs1, imageSize, 1, imageSize, 0));
+                undistortPoints(pointsMat2, imagePoints2, cameraMatrix2, distCoeffs2, rmat2,getOptimalNewCameraMatrix(cameraMatrix2, distCoeffs2, imageSize, 1, imageSize, 0));
+                
+                Mat temp1, temp2;
+                R.release();
+                T.release();
+                E.release();
+                F.release();
+                
+                stereoCalibrate(objectPoints, imagePoints1, imagePoints2, cameraMatrix1, distCoeffs1, cameraMatrix2, distCoeffs2, imageSize, R, T, E, F,
+                                TermCriteria( CV_TERMCRIT_EPS+CV_TERMCRIT_ITER, 1000, 0.01),
+                                CV_CALIB_FIX_INTRINSIC);
+                
+                Rodrigues(R, rvec);
+                cerr << "Reprojected rvec: " << rvec << endl;
+                
+                imagePoints1.clear();
+                imagePoints2.clear();
+                
+                if (retrieveChessboardCorners(s, imagePoints1, imagePoints2, inputCapture1, inputCapture2, 5,1, mapX1, mapY1, mapX2, mapY2)){
+                    
+                    temp1.release();
+                    temp2.release();
+                    R.release();
+                    T.release();
+                    E.release();
+                    F.release();
+                    
+                    stereoCalibrate(objectPoints, imagePoints3, imagePoints4, cameraMatrix1, temp1, cameraMatrix2, temp2, imageSize, R, T, E, F,
+                                    TermCriteria( CV_TERMCRIT_EPS+CV_TERMCRIT_ITER, 1000, 0.01),
+                                    CV_CALIB_FIX_INTRINSIC);
+                    
+                    cerr << "Reprojection error reported by camera: " << rms << endl;
+
+                    Rodrigues(R, rvec);
+                    cerr << "Adjusted rvec: " << rvec << endl;
+                    
+                    translation = T;
+                    cerr << "big success" << endl;
+                    
+                    temp1.release();
+                    temp2.release();
+                }
+                
+                pointsMat1.release();
+                pointsMat2.release();
+                rvec.release();
+                rmat1.release();
+                rmat2.release();
+                R.release();
+                T.release();
+                E.release();
+                F.release();
+                
+                rotationCalibrated = true;
+            }
+        }
+        imshow("Image View1", image1);
+        imshow("Image View2", image2);
     }
+}
 
-    char c = waitKey(15);
-    if (c == 'c')
-    {
-        printf("Cancelling...\n");
-        return;
+
+static void calcBoardCornerPositions(Size boardSize, float squareSize, vector<Point3f>& corners)
+{
+    corners.clear();
+    
+    for( int i = 0; i < boardSize.height; ++i )
+        for( int j = 0; j < boardSize.width; ++j )
+            corners.push_back(Point3f(float( j*squareSize ), float( i*squareSize ), 0));
+}
+
+static bool retrieveChessboardCorners(BoardSettings s, vector<vector<Point2f> >& imagePoints1,
+                                      vector<vector<Point2f> >& imagePoints2, VideoCapture videoFeed1,
+                                      VideoCapture videoFeed2, int iterations, bool remapFirst, Mat mapX1,
+                                      Mat mapY1, Mat mapX2, Mat mapY2){
+    destroyAllWindows();
+    Mat image1,image2;
+    vector<Point2f> pointBuffer1;
+    vector<Point2f> pointBuffer2;
+    clock_t prevTimeStamp = 0;
+    bool found1,found2;
+    int count = 0;
+    while (count != iterations){
+        char c = waitKey(15);
+        if (c == 's'){
+            cout << "Calibration stopped" << endl;
+            return false;
+        }
+        else if(c == 'c'){
+            //Try find chessboard corners
+            //ADAPTIVE_THRESH -> use adaptive thresholding to convert image to B&W
+            //FAST_CHECK -> Terminates call earlier if no chessboard in image
+            //NORMALIZE_IMAGE -> normalize image gamma before thresholding
+            //FILTER_QUADS -> uses additional criteria to filter out false quads
+            found1 = findChessboardCorners(image1, s.boardSize, pointBuffer1,
+                                           CV_CALIB_CB_ADAPTIVE_THRESH | CV_CALIB_CB_FAST_CHECK |
+                                           CV_CALIB_CB_NORMALIZE_IMAGE | CV_CALIB_CB_FILTER_QUADS);
+            found2 = findChessboardCorners(image2, s.boardSize, pointBuffer2,
+                                           CV_CALIB_CB_ADAPTIVE_THRESH | CV_CALIB_CB_FAST_CHECK |
+                                           CV_CALIB_CB_NORMALIZE_IMAGE | CV_CALIB_CB_FILTER_QUADS);
+            
+            if (found1 && found2 && (pointBuffer1.size() >= s.cornerNum) && (pointBuffer2.size() >= s.cornerNum)){
+                //If time delay passed refine accuracy and store
+                if ((clock() - prevTimeStamp) > CAPTURE_DELAY * 1e-3*CLOCKS_PER_SEC){
+                    Mat imageGray1, imageGray2;
+                    cvtColor(image1, imageGray1, COLOR_BGR2GRAY);
+                    cvtColor(image2, imageGray2, COLOR_BGR2GRAY);
+                    
+                    //Refines corner locations
+                    //Size(11,11) -> size of the search window
+                    //Size(-1,-1) -> indicates no dead zone in search size
+                    //TermCriteria -> max 1000 iteration, to get acuraccy of 0.01
+                    cornerSubPix(imageGray1, pointBuffer1, Size(5,5), Size(-1, -1),
+                                 TermCriteria( CV_TERMCRIT_EPS+CV_TERMCRIT_ITER, 1000, 0.01));
+                    cornerSubPix(imageGray2, pointBuffer2, Size(5,5), Size(-1, -1),
+                                 TermCriteria( CV_TERMCRIT_EPS+CV_TERMCRIT_ITER, 1000, 0.01));
+                    
+                    drawChessboardCorners(image1, s.boardSize, Mat(pointBuffer1), found1);
+                    imshow("Image View1", image1);
+                    drawChessboardCorners(image2, s.boardSize, Mat(pointBuffer2), found2);
+                    imshow("Image View2", image2);
+                    
+                    //User verifies the correct corners have been found
+                    c = waitKey(0);
+                    if (c == 'y'){
+                        //Store the points and store time stamp
+                        imagePoints1.push_back(pointBuffer1);
+                        imagePoints2.push_back(pointBuffer2);
+                        prevTimeStamp = clock();
+                        count++;
+                        cout << "Count: " << count << endl;
+                    }
+                }
+            }
+        }
+        videoFeed1.read(image1);
+        videoFeed2.read(image2);
+        
+        if (remapFirst){
+            Mat t1 = image1.clone();
+            Mat t2 = image2.clone();
+            remap(t1, image1, mapX1, mapY1, INTER_LINEAR);
+            remap(t2, image2, mapX2, mapY2, INTER_LINEAR);
+            t1.release();
+            t2.release();
+        }
+        imshow("Image View1", image1);
+        imshow("Image View2", image2);
+
+        
+        
     }
-      else if(c == 's' && translationCalibrated)
-    {
-      printf("Saving...\n");
-      const string fileName = "EnvironmentCalibration.xml";
-      FileStorage fs(fileName, FileStorage::WRITE);
-      fs << "Camera_Matrix_1" << cameraMatrix1;
-      fs << "Camera_Matrix_2" << cameraMatrix2;
-      fs << "Mapping_X_1" << mapX1;
-      fs << "Mapping_Y_1" << mapY1;
-      fs << "Mapping_X_2" << mapX2;
-      fs << "Mapping_Y_2" << mapY2;
-      fs << "Translation" << translation;
-        return;
-    }
-    else if (c == 't' && rotationCalibrated)
-    {
-      printf("Finding translation\n");
-      Mat rvecs, tvecs;
-      vector<Point2f> imagePoints1, imagePoints2;
-      vector<Point3f> objectPoints1, objectPoints2;
-
-      printf("Finding corners...\n");
-
-      found1 = findChessboardCorners(image1, boardSize, imagePoints1,
-          CV_CALIB_CB_ADAPTIVE_THRESH | CV_CALIB_CB_FAST_CHECK |
-          CV_CALIB_CB_NORMALIZE_IMAGE);
-
-      found2 = findChessboardCorners(image2, boardSize, imagePoints2,
-          CV_CALIB_CB_ADAPTIVE_THRESH | CV_CALIB_CB_FAST_CHECK |
-          CV_CALIB_CB_NORMALIZE_IMAGE);
-
-      printf("Found corners.\n");
-
-
-      if (found1 & found2)
-      {
-        for( int i = 0; i < BOARD_HEIGHT; ++i )
-            for( int j = 0; j < BOARD_WIDTH; ++j )
-                objectPoints1.push_back(Point3f(float( j*(float)SQUARE_SIZE_SMALL ), float( i*(float)SQUARE_SIZE_SMALL ), 0));
-
-        for( int i = 0; i < BOARD_HEIGHT; ++i )
-            for( int j = 0; j < BOARD_WIDTH; ++j )
-                objectPoints2.push_back(Point3f(float( j*(float)SQUARE_SIZE_SMALL ), float( i*(float)SQUARE_SIZE_SMALL ), 0));
-
-        Mat rvecs1, tvecs1, rvecs2, tvecs2, tdiff;
-        Mat tvecsT;
-        Mat mult = (Mat_<double>(3,1) << -1, 1, 1);
-        printf("Solving PnP...\n");
-
-
-        solvePnP(objectPoints1, imagePoints1, cameraMatrix1, distCoeffs1, rvecs1, tvecs1, 0);
-        solvePnP(objectPoints2, imagePoints2, cameraMatrix2, distCoeffs2, rvecs2, tvecs2, 0);
-
-        printf("Solved PnP.\n");
-
-        cout<< "translation 2: before " << tvecs2 << endl;
-
-
-        //transpose(tvecs2, tvecsT);
-        flip(tvecs2, tvecs2, 0);
-
-        cout<< "translation 2: after flip " << tvecs2 << endl;
-
-        multiply(tvecs2, mult, tvecs2, 1);
-
-        cout<< "translation 2: after mult " << tvecs2 << endl;
-
-
-        translation = tvecs1 - tvecs2;
-
-        cout<< "translation 1: " << tvecs1 << endl;
-        cout<< "translation 2: " << tvecs2 << endl;
-        //cout<< "translation 2 transpose: " << tvecsT << endl;
-
-
-        cout<< "translation diff: " << translation << endl;
-
-        rvecs1.release();
-        tvecs1.release();
-        rvecs2.release();
-        tvecs2.release();
-
-        translationCalibrated = true;
-        printf("Found distance...\n");
-      }
-    }
-    else if (c == 'r')
-    {
-      printf("Finding rotation\n");
-
-      Mat rvecs, tvecs;
-      vector<Point2f> imagePoints1, imagePoints2;
-      vector<Point3f> objectPoints1, objectPoints2;
-
-      printf("Finding corners...\n");
-
-      found1 = findChessboardCorners(image1, boardSize, imagePoints1,
-          CV_CALIB_CB_ADAPTIVE_THRESH | CV_CALIB_CB_FAST_CHECK |
-          CV_CALIB_CB_NORMALIZE_IMAGE);
-
-      found2 = findChessboardCorners(image2, boardSize, imagePoints2,
-          CV_CALIB_CB_ADAPTIVE_THRESH | CV_CALIB_CB_FAST_CHECK |
-          CV_CALIB_CB_NORMALIZE_IMAGE);
-
-      printf("Found corners.\n");
-
-
-      if (found1 & found2)
-      {
-        for( int i = 0; i < BOARD_HEIGHT; ++i )
-            for( int j = 0; j < BOARD_WIDTH; ++j )
-                objectPoints1.push_back(Point3f(float( j*(float)SQUARE_SIZE ), float( i*(float)SQUARE_SIZE ), 0));
-
-        for( int i = 0; i < BOARD_HEIGHT; ++i )
-            for( int j = 0; j < BOARD_WIDTH; ++j )
-                objectPoints2.push_back(Point3f(float( j*(float)SQUARE_SIZE ), float( i*(float)SQUARE_SIZE ), 0));
-
-        Mat rvecs1, tvecs1, rvecs2, tvecs2, tdiff, rmat1, rmat2;
-
-        printf("Solving PnP...\n");
-
-
-        solvePnP(objectPoints1, imagePoints1, cameraMatrix1, distCoeffs1, rvecs1, tvecs1, 0);
-        solvePnP(objectPoints2, imagePoints2, cameraMatrix2, distCoeffs2, rvecs2, tvecs2, 0);
-
-        printf("Solved PnP.\n");
-
-
-        cout << "rvecs1: " << rvecs1 << endl;
-        cout << "tvecs1: " << tvecs1 << endl;
-        cout << "rvecs2: " << rvecs2 << endl;
-        cout << "tvecs2: " << tvecs2 << endl;
-
-        Rodrigues(rvecs1, rmat1);
-        Rodrigues(rvecs2, rmat2);
-
-        invert(rmat1, rmat1);
-        invert(rmat2, rmat2);
-
-
-        initUndistortRectifyMap(cameraMatrix1, distCoeffs1, rmat1,
-        getOptimalNewCameraMatrix(cameraMatrix1, distCoeffs1, imageSize, 1, imageSize, 0),
-        imageSize, CV_32FC1, mapX1, mapY1);
-
-        initUndistortRectifyMap(cameraMatrix2, distCoeffs2, rmat2,
-        getOptimalNewCameraMatrix(cameraMatrix2, distCoeffs2, imageSize, 1, imageSize, 0),
-        imageSize, CV_32FC1, mapX2, mapY2);
-
-
-        rvecs1.release();
-        tvecs1.release();
-        rvecs2.release();
-        tvecs2.release();
-
-        rotationCalibrated = true;
-      }
-    }
-    imshow("Camera1", image1);
-    imshow("Camera2", image2);
-
-    }
+    //Found all corners
+    return true;
 }
