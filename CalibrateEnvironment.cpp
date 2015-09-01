@@ -84,10 +84,11 @@ void CalibrateEnvironment(VideoCapture& inputCapture1, VideoCapture& inputCaptur
             vector<Point3f> objectPoints;
             vector<vector<Point2f> > imagePoints1, imagePoints2,  imagePoints3, imagePoints4;
             
-            if (retrieveChessboardCorners(s, imagePoints1, imagePoints2, inputCapture1, inputCapture2, 5, 0, mapX1, mapY1, mapX2, mapY2)){
+            if (RetrieveChessboardCorners(s, imagePoints1, imagePoints2, inputCapture1, inputCapture2, 5, 0, mapX1, mapY1, mapX2, mapY2))
+            {
                 
                 vector<vector<Point3f> > objectPoints(1);
-                calcBoardCornerPositions(s.boardSize, s.squareSize, objectPoints[0]);
+                CalcBoardCornerPositions(s.boardSize, s.squareSize, objectPoints[0]);
                 objectPoints.resize(imagePoints1.size(),objectPoints[0]);
                 
                 Mat R, T, E, F;
@@ -135,7 +136,8 @@ void CalibrateEnvironment(VideoCapture& inputCapture1, VideoCapture& inputCaptur
                 imagePoints1.clear();
                 imagePoints2.clear();
                 
-                if (retrieveChessboardCorners(s, imagePoints1, imagePoints2, inputCapture1, inputCapture2, 5,1, mapX1, mapY1, mapX2, mapY2)){
+                if (RetrieveChessboardCorners(s, imagePoints1, imagePoints2, inputCapture1, inputCapture2, 5,1, mapX1, mapY1, mapX2, mapY2))
+                {
                     
                     temp1.release();
                     temp2.release();
@@ -179,7 +181,7 @@ void CalibrateEnvironment(VideoCapture& inputCapture1, VideoCapture& inputCaptur
 }
 
 
-static void calcBoardCornerPositions(Size boardSize, float squareSize, vector<Point3f>& corners)
+void CalcBoardCornerPositions(Size boardSize, float squareSize, vector<Point3f>& corners)
 {
     corners.clear();
     
@@ -188,7 +190,7 @@ static void calcBoardCornerPositions(Size boardSize, float squareSize, vector<Po
             corners.push_back(Point3f(float( j*squareSize ), float( i*squareSize ), 0));
 }
 
-static bool retrieveChessboardCorners(BoardSettings s, vector<vector<Point2f> >& imagePoints1,
+bool RetrieveChessboardCorners(BoardSettings s, vector<vector<Point2f> >& imagePoints1,
                                       vector<vector<Point2f> >& imagePoints2, VideoCapture videoFeed1,
                                       VideoCapture videoFeed2, int iterations, bool remapFirst, Mat mapX1,
                                       Mat mapY1, Mat mapX2, Mat mapY2){

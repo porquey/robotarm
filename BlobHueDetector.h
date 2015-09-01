@@ -12,14 +12,11 @@ class BlobHueDetector
 public:
     
     BlobHueDetector();
-    /*
-     BlobHueDetector(cv::SimpleBlobDetector::Params &parameters);
-     
-     BlobHueDetector(cv::SimpleBlobDetector::Params &parameters, int lowH, int highH, int lowS, int highS, int lowV, int highV);
-     */
+    
     bool GetBlobCentres(cv::Mat &src1, cv::Mat &src2, cv::KeyPoint &keypoint1, cv::KeyPoint &keypoint2);
     bool GetBlob(cv::Mat &src, cv::KeyPoint &keypoint);
-    //bool getBlobData(double &area, double &convexity);
+    bool GetStripVectors(cv::Mat &src1, cv::Mat &src2, cv::KeyPoint &begin1, cv::KeyPoint &end1, cv::KeyPoint &begin2, cv::KeyPoint &end2);
+    bool GetStrip(cv::Mat &src, cv::KeyPoint &begin, cv::KeyPoint &end);
     void SetHSVRanges(const HSVRanges range);
     void SetDefaultHSVRanges();
 private:
@@ -27,12 +24,7 @@ private:
     cv::SimpleBlobDetector::Params params;
     int iLowH, iHighH, iLowS, iHighS, iLowV, iHighV;
     int counter1, counter2;
-    cv::Point last1, last2;
+    cv::KeyPoint last1, last2;
     
-    //bool blobDetected;
-    //double blobArea;
-    //double blobCircularity;
-    //double blobInertia;
-    //double blobPerimeter;
-    //double blobConvexity;
+    cv::KeyPoint lastBegin1, lastEnd1, lastBegin2, lastEnd2;
 };

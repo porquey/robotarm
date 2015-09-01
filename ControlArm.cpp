@@ -11,7 +11,7 @@ link2(l2)
 {
 }
 
-void ControlArm::SetArmPose(vector<Point3D> joints)
+void ControlArm::SetArmPose(vector<Point3f> joints)
 {
     if(joints.size() == 4)
     {
@@ -27,7 +27,7 @@ void ControlArm::CalculateLinkLengths()
     link0 = CalculateLength(CalculateVector(jointPositions[1], jointPositions[0]));
     link1 = CalculateLength(CalculateVector(jointPositions[2], jointPositions[1]));
     link2 = CalculateLength(CalculateVector(jointPositions[3], jointPositions[2]));
-    cout << "Link 0: " << link0 << " Link 1: " << link1 << " Link 2: " << link2 << endl;
+    //cout << "Link 0: " << link0 << " Link 1: " << link1 << " Link 2: " << link2 << endl;
 }
 
 void ControlArm::GetArmPose(double angles[3])
@@ -46,19 +46,19 @@ void ControlArm::GetCurrentPose(double angles[3])
     
     currentAngles[2] = 3.14159 - CalculateAngle(CalculateVector(jointPositions[2], jointPositions[1]), CalculateVector(jointPositions[2], jointPositions[3]));
     
-    cout << "Angle 0 " << currentAngles[0] << " Angle 1 " << currentAngles[1] << " Angle 2 " << currentAngles[2] << endl;
+    //cout << "Angle 0 " << currentAngles[0] << " Angle 1 " << currentAngles[1] << " Angle 2 " << currentAngles[2] << endl;
 
     angles = currentAngles;
 }
 
-void ControlArm::SetTarget(Point3D target)
+void ControlArm::SetTarget(Point3f target)
 {
     targetPosition = target;
-    cout << "TARGET: " << targetPosition.x << " " << targetPosition.y << " " << targetPosition.z << endl;
+    //cout << "TARGET: " << targetPosition.x << " " << targetPosition.y << " " << targetPosition.z << endl;
 
     if(CalculateLength(CalculateVector(targetPosition, jointPositions[1])) > link1 + link2)
     {
-        Point3D pointDiff = targetPosition - jointPositions[1];
+        Point3f pointDiff = targetPosition - jointPositions[1];
         double absDiff = CalculateLength(PointToVec(pointDiff));
         
         targetPosition.x = (pointDiff.x / absDiff) * (link1 + link2);
@@ -66,13 +66,13 @@ void ControlArm::SetTarget(Point3D target)
         targetPosition.z = (pointDiff.z / absDiff) * (link1 + link2);
         targetPosition = targetPosition + jointPositions[1];
         
-        cout << "OUT OF REACH. NEW TARGET: " << targetPosition.x << " " << targetPosition.y << " " << targetPosition.z << endl;
+        //cout << "OUT OF REACH. NEW TARGET: " << targetPosition.x << " " << targetPosition.y << " " << targetPosition.z << endl;
     }
     FindInverseKinematics();
-    cout << "NEW ANGLE0: " << jointAngles[0] << " ANGLE1: " << jointAngles[1] << " ANGLE2: " << jointAngles[2] << endl;
+    //cout << "NEW ANGLE0: " << jointAngles[0] << " ANGLE1: " << jointAngles[1] << " ANGLE2: " << jointAngles[2] << endl;
 }
 
-void ControlArm::UpdateArmPose(Point3D detected)
+void ControlArm::UpdateArmPose(Point3f detected)
 {
     SetTarget(CalculateCompensationStep(detected) + targetPosition);
     
@@ -85,7 +85,7 @@ void ControlArm::FindInverseKinematics()
     
     x = targetPosition.x - jointPositions[0].x;
     z = targetPosition.z - jointPositions[0].z;
-    cout << "X: " << x << " Z: " << z << endl;
+    //cout << "X: " << x << " Z: " << z << endl;
     
     jointAngles[0] = atan2(z, x);
     
@@ -99,14 +99,14 @@ void ControlArm::FindInverseKinematics()
     
 }
 
-double ControlArm::CalculateAngle(Vector3D a, Vector3D b)
+double ControlArm::CalculateAngle(Point3f a, Point3f b)
 {
     double mag1 = CalculateLength(a);
     double mag2 = CalculateLength(b);
     
     if(mag1 == 0 || mag2 == 0)
     {
-        cout << "Vector magnitude = 0" << endl;
+        //cout << "Vector magnitude = 0" << endl;
         return 0;
     }
     double angle = acos((a.x * b.x + a.y * b.y + a.z * b.z)/(mag1 * mag2));
@@ -114,23 +114,23 @@ double ControlArm::CalculateAngle(Vector3D a, Vector3D b)
     return angle;
 }
 
-Vector3D ControlArm::CalculateVector(Point3D a, Point3D b)
+Point3f ControlArm::CalculateVector(Point3f a, Point3f b)
 {
-    Vector3D c;
+    Point3f c;
     c.x = a.x - b.x;
     c.y = a.y - b.y;
     c.z = a.z - b.z;
     return c;
 }
 
-double ControlArm::CalculateLength(Vector3D a)
+double ControlArm::CalculateLength(Point3f a)
 {
      return sqrt(a.x * a.x + a.y * a.y + a.z * a.z);
 }
 
-Vector3D ControlArm::PointToVec(const Point3D a)
+Point3f ControlArm::PointToVec(const Point3f a)
 {
-    Vector3D b;
+    Point3f b;
     b.x = a.x;
     b.y = a.y;
     b.z = a.z;
@@ -141,35 +141,35 @@ Vector3D ControlArm::PointToVec(const Point3D a)
 void ControlArm::InitFuzzyController()
 {
     fuzzySet.clear();
-    fuzzySet.push_back(FuzzyRule(Point3D(-10000, -10000, -10000), Point3D(-5, -5.5, -5), Point3D(-3, -1.5, -2), Point3D(-0.6, -0.6, -0.6)));
-    fuzzySet.push_back(FuzzyRule(Point3D(-5, -5.5, -5), Point3D(-3, -1.5, -2), Point3D(0, 0, 0), Point3D(-0.4, -0.4, -0.4)));
-    fuzzySet.push_back(FuzzyRule(Point3D(-3, -1.5, -2), Point3D(0, 0, 0), Point3D(3, 1.5, 2), Point3D(0, 0, 0)));
-    fuzzySet.push_back(FuzzyRule(Point3D(0, 0, 0), Point3D(3, 1.5, 2), Point3D(5, 5.5, 5), Point3D(0.4, 0.4, 0.4)));
-    fuzzySet.push_back(FuzzyRule(Point3D(3, 1.5, 2), Point3D(5, 5.5, 5), Point3D(10000, 10000, 10000), Point3D(0.6, 0.6, 0.6)));
+    fuzzySet.push_back(FuzzyRule(Point3f(-10000, -10000, -10000), Point3f(-5, -5.5, -5), Point3f(-3, -1.5, -2), Point3f(-0.6, -0.6, -0.6)));
+    fuzzySet.push_back(FuzzyRule(Point3f(-5, -5.5, -5), Point3f(-3, -1.5, -2), Point3f(0, 0, 0), Point3f(-0.4, -0.4, -0.4)));
+    fuzzySet.push_back(FuzzyRule(Point3f(-3, -1.5, -2), Point3f(0, 0, 0), Point3f(3, 1.5, 2), Point3f(0, 0, 0)));
+    fuzzySet.push_back(FuzzyRule(Point3f(0, 0, 0), Point3f(3, 1.5, 2), Point3f(5, 5.5, 5), Point3f(0.4, 0.4, 0.4)));
+    fuzzySet.push_back(FuzzyRule(Point3f(3, 1.5, 2), Point3f(5, 5.5, 5), Point3f(10000, 10000, 10000), Point3f(0.6, 0.6, 0.6)));
 }
 
-Point3D ControlArm::CalculateCompensationStep(Point3D detected)
+Point3f ControlArm::CalculateCompensationStep(Point3f detected)
 {
-    Point3D error = detected - targetPosition;
-    Point3D kSum;
+    Point3f error = detected - targetPosition;
+    Point3f kSum;
     for(int i = 0; i < 5; i++)
     {
-        Point3D k = fuzzySet[i].GetWeighting(error);
+        Point3f k = fuzzySet[i].GetWeighting(error);
         kSum = kSum + k;
     }
     return kSum;
 }
 
 ControlArm::FuzzyRule::FuzzyRule()
-: min(Point3D())
-, centre(Point3D())
-, max(Point3D())
-, weighting(Point3D())
+: min(Point3f())
+, centre(Point3f())
+, max(Point3f())
+, weighting(Point3f())
 {
     
 }
 
-ControlArm::FuzzyRule::FuzzyRule(Point3D a, Point3D b, Point3D c, Point3D w)
+ControlArm::FuzzyRule::FuzzyRule(Point3f a, Point3f b, Point3f c, Point3f w)
 : min(a)
 , centre(b)
 , max(c)
@@ -187,7 +187,7 @@ ControlArm::FuzzyRule::FuzzyRule(FuzzyRule const& rule)
     
 }
 
-void ControlArm::FuzzyRule::SetValues(Point3D a, Point3D b, Point3D c, Point3D w)
+void ControlArm::FuzzyRule::SetValues(Point3f a, Point3f b, Point3f c, Point3f w)
 {
     min = a;
     centre = b;
@@ -195,9 +195,9 @@ void ControlArm::FuzzyRule::SetValues(Point3D a, Point3D b, Point3D c, Point3D w
     weighting = w;
 }
 
-Point3D ControlArm::FuzzyRule::GetWeighting(Point3D error)
+Point3f ControlArm::FuzzyRule::GetWeighting(Point3f error)
 {
-    Point3D k;
+    Point3f k;
     
     if(error.x < max.x && error.x >= centre.x)
     {

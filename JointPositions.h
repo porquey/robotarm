@@ -19,8 +19,10 @@
 using namespace cv;
 using namespace std;
 
-void calculateJoints(vector<Point2f>& pixels, Mat cameraMatrix1, Mat cameraMatrix2, Mat distance);
-Point3f calculate3DPoint(Point2f pixels1, Point2f pixels2, Mat cameraMatrix1, Mat cameraMatrix2, Mat distance);
+bool DeterminePairs(vector<KeyPoint> &random, vector<KeyPoint> &sorted, double mag);
+
+void CalculateJoints(vector<Point2f>& pixels, Mat cameraMatrix1, Mat cameraMatrix2, Mat distance);
+Point3f Calculate3DPoint(Point2f pixels1, Point2f pixels2, Mat cameraMatrix1, Mat cameraMatrix2, Mat distance);
 
 #endif /* defined(__robotarm__JointPositions__) */
 
