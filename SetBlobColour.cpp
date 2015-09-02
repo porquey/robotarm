@@ -7,9 +7,9 @@ void MouseCallBack(int event, int x, int y, int flags, void* userData)
     if(event == EVENT_LBUTTONDOWN)
     {
         Mat* img = static_cast<Mat*> (userData);
-        cout << "X: " << x << " Y:" << y << endl;
+        cerr << "X: " << x << " Y:" << y << endl;
         Vec3b pixel = img->at<Vec3b>(y, x);
-        cout << "H: " << (int)pixel[0] << " S: " << (int)pixel[1] << " V: " << (int)pixel[2] << endl;
+        cerr << "H: " << (int)pixel[0] << " S: " << (int)pixel[1] << " V: " << (int)pixel[2] << endl;
         iLowH = (int)pixel[0] - 10;
         iHighH = (int)pixel[0] + 10;
         iLowS = (int)pixel[1] - 80;
@@ -77,87 +77,87 @@ void SetBlobColour(VideoCapture& inputCapture1, VideoCapture& inputCapture2)
         if((char)key == 't')
         {
             iHighH += 2;
-            cout << "H: " << iHighH << " - " << iLowH << endl;
-            cout << "S: " << iHighS << " - " << iLowS << endl;
-            cout << "V: " << iHighV << " - " << iLowV << endl;
+            cerr << "H: " << iHighH << " - " << iLowH << endl;
+            cerr << "S: " << iHighS << " - " << iLowS << endl;
+            cerr << "V: " << iHighV << " - " << iLowV << endl;
             
         }
         else if((char)key == 'y')
         {
             iLowH += 2;
-            cout << "H: " << iHighH << " - " << iLowH << endl;
-            cout << "S: " << iHighS << " - " << iLowS << endl;
-            cout << "V: " << iHighV << " - " << iLowV << endl;
+            cerr << "H: " << iHighH << " - " << iLowH << endl;
+            cerr << "S: " << iHighS << " - " << iLowS << endl;
+            cerr << "V: " << iHighV << " - " << iLowV << endl;
         }
         else if((char)key == 'u')
         {
             iHighS += 2;
-            cout << "H: " << iHighH << " - " << iLowH << endl;
-            cout << "S: " << iHighS << " - " << iLowS << endl;
-            cout << "V: " << iHighV << " - " << iLowV << endl;
+            cerr << "H: " << iHighH << " - " << iLowH << endl;
+            cerr << "S: " << iHighS << " - " << iLowS << endl;
+            cerr << "V: " << iHighV << " - " << iLowV << endl;
         }
         else if((char)key == 'i')
         {
             iLowS += 2;
-            cout << "H: " << iHighH << " - " << iLowH << endl;
-            cout << "S: " << iHighS << " - " << iLowS << endl;
-            cout << "V: " << iHighV << " - " << iLowV << endl;
+            cerr << "H: " << iHighH << " - " << iLowH << endl;
+            cerr << "S: " << iHighS << " - " << iLowS << endl;
+            cerr << "V: " << iHighV << " - " << iLowV << endl;
         }
         else if((char)key == 'o')
         {
             iHighV += 2;
-            cout << "H: " << iHighH << " - " << iLowH << endl;
-            cout << "S: " << iHighS << " - " << iLowS << endl;
-            cout << "V: " << iHighV << " - " << iLowV << endl;
+            cerr << "H: " << iHighH << " - " << iLowH << endl;
+            cerr << "S: " << iHighS << " - " << iLowS << endl;
+            cerr << "V: " << iHighV << " - " << iLowV << endl;
         }
         else if((char)key == 'p')
         {
             iLowV += 2;
-            cout << "H: " << iHighH << " - " << iLowH << endl;
-            cout << "S: " << iHighS << " - " << iLowS << endl;
-            cout << "V: " << iHighV << " - " << iLowV << endl;
+            cerr << "H: " << iHighH << " - " << iLowH << endl;
+            cerr << "S: " << iHighS << " - " << iLowS << endl;
+            cerr << "V: " << iHighV << " - " << iLowV << endl;
         }else if((char)key == 'g')
         {
             iHighH -= 2;
-            cout << "H: " << iHighH << " - " << iLowH << endl;
-            cout << "S: " << iHighS << " - " << iLowS << endl;
-            cout << "V: " << iHighV << " - " << iLowV << endl;
+            cerr << "H: " << iHighH << " - " << iLowH << endl;
+            cerr << "S: " << iHighS << " - " << iLowS << endl;
+            cerr << "V: " << iHighV << " - " << iLowV << endl;
             
         }
         else if((char)key == 'h')
         {
             iLowH -= 2;
-            cout << "H: " << iHighH << " - " << iLowH << endl;
-            cout << "S: " << iHighS << " - " << iLowS << endl;
-            cout << "V: " << iHighV << " - " << iLowV << endl;
+            cerr << "H: " << iHighH << " - " << iLowH << endl;
+            cerr << "S: " << iHighS << " - " << iLowS << endl;
+            cerr << "V: " << iHighV << " - " << iLowV << endl;
         }
         else if((char)key == 'j')
         {
             iHighS -= 2;
-            cout << "H: " << iHighH << " - " << iLowH << endl;
-            cout << "S: " << iHighS << " - " << iLowS << endl;
-            cout << "V: " << iHighV << " - " << iLowV << endl;
+            cerr << "H: " << iHighH << " - " << iLowH << endl;
+            cerr << "S: " << iHighS << " - " << iLowS << endl;
+            cerr << "V: " << iHighV << " - " << iLowV << endl;
         }
         else if((char)key == 'k')
         {
             iLowS -= 2;
-            cout << "H: " << iHighH << " - " << iLowH << endl;
-            cout << "S: " << iHighS << " - " << iLowS << endl;
-            cout << "V: " << iHighV << " - " << iLowV << endl;
+            cerr << "H: " << iHighH << " - " << iLowH << endl;
+            cerr << "S: " << iHighS << " - " << iLowS << endl;
+            cerr << "V: " << iHighV << " - " << iLowV << endl;
         }
         else if((char)key == 'l')
         {
             iHighV -= 2;
-            cout << "H: " << iHighH << " - " << iLowH << endl;
-            cout << "S: " << iHighS << " - " << iLowS << endl;
-            cout << "V: " << iHighV << " - " << iLowV << endl;
+            cerr << "H: " << iHighH << " - " << iLowH << endl;
+            cerr << "S: " << iHighS << " - " << iLowS << endl;
+            cerr << "V: " << iHighV << " - " << iLowV << endl;
         }
         else if((char)key == ';')
         {
             iLowV -= 2;
-            cout << "H: " << iHighH << " - " << iLowH << endl;
-            cout << "S: " << iHighS << " - " << iLowS << endl;
-            cout << "V: " << iHighV << " - " << iLowV << endl;
+            cerr << "H: " << iHighH << " - " << iLowH << endl;
+            cerr << "S: " << iHighS << " - " << iLowS << endl;
+            cerr << "V: " << iHighV << " - " << iLowV << endl;
         }
         else if((char)key == 's')
         {

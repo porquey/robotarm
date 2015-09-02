@@ -113,13 +113,13 @@ void CalculateJoint(vector<Point3f> link1, vector<Point3f> link2, Point3f& joint
     double t = (p2v1 - p1v1 + s * v1v2) / v1v1;
     Point3f pt1 = link1[0] + t * vec1;
     Point3f pt2 = link2[1] + s * vec2;
-    cout << "S: " << s << " T: " << t << endl;
-    cout << "POINT1: " << pt1 << " POINT2: " << pt2 << endl;
+    //cout << "S: " << s << " T: " << t << endl;
+    //cout << "POINT1: " << pt1 << " POINT2: " << pt2 << endl;
     joint = (pt1 + pt2) * 0.5;
-    cout << "JOINT: " << joint << endl;
-    Point3f distVec = s * vec2 + link2[1] - t * vec1 - link1[0];
-    cout << "DIST VEC: " << distVec << endl;
-    cout << " DIST: " << CalculateLength(distVec) << endl;
+    //cout << "JOINT: " << joint << endl;
+    //Point3f distVec = s * vec2 + link2[1] - t * vec1 - link1[0];
+    //cout << "DIST VEC: " << distVec << endl;
+    //cout << " DIST: " << CalculateLength(distVec) << endl;
 }
 
 Point3f Calculate3DPoint(Point2f pt1, Point2f pt2, Mat &cameraMatrix1, Mat &cameraMatrix2, Mat &translation){

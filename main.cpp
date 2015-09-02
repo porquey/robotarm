@@ -21,8 +21,8 @@
 #define HALF_POINT_X 319.5
 #define HALF_POINT_Y 239.5
 
-#define CAMERA1 0
-#define CAMERA2 0
+#define CAMERA1 1
+#define CAMERA2 2
 
 using namespace cv;
 using namespace std;
@@ -38,14 +38,14 @@ int reprojectVal = 0, height = 0;
 bool checkBlobs = false;
 
 
-void reprojectPoints(double x, double y, double z, Point2f &pt1, Point2f &pt2)
+void reprojectPoints(Point3f pt, Point2f &pt1, Point2f &pt2)
 {
     //xscreen = fx * (X/Z) + cx
-    pt1.x = (x*fx1)/(z+zTrans) + cx1;
-    pt1.y = (y*fy1)/(z+zTrans) + cy1;
+    pt1.x = (pt.x * fx1) / (pt.z + zTrans) + cx1;
+    pt1.y = (pt.y * fy1) / (pt.z + zTrans) + cy1;
     
-    pt2.x = (z*fx2)/(xTrans-x) + cx2;
-    pt2.y = ((y+yTrans)*fy2)/(xTrans-x)+ cy2;
+    pt2.x = (pt.z * fx2) / (xTrans - pt.x) + cx2;
+    pt2.y = ((pt.y + yTrans) * fy2) / (xTrans - pt.x) + cy2;
     
 }
 
@@ -61,7 +61,7 @@ int main(int argc, char** argv)
     
     const string calibFileName = "EnvironmentCalibration.xml";
     
-    cout << "Attempting to open configuration files" << endl;
+    cerr << "Attempting to open configuration files" << endl;
     FileStorage fs(calibFileName, FileStorage::READ);
     
     fs["Camera_Matrix_1"] >> cameraMatrix1;
@@ -74,7 +74,7 @@ int main(int argc, char** argv)
     
     if (cameraMatrix1.data == NULL || cameraMatrix2.data == NULL)
     {
-        printf("Could not load camera intrinsics\n");
+        cerr << "Could not load camera intrinsics" << endl;
     }
     
     fx1 = cameraMatrix1.at<double>(0, 0);
@@ -114,7 +114,7 @@ int main(int argc, char** argv)
 
     if(hsvSize.data == NULL)
     {
-        printf("No BlobHSVColour data\n");
+        cerr << "No BlobHSVColour data" << endl;
         
         BlobHueDetector blobDetector;
         blobDetector.SetDefaultHSVRanges();
@@ -122,7 +122,7 @@ int main(int argc, char** argv)
     }
     else
     {
-        printf("Found BlobHSVColour data\n");
+        cerr << "Found BlobHSVColour data" << endl;
         blobNum = hsvSize.at<int>(0, 0);
         
         for(int i = 0; i < blobNum; i++)
@@ -142,7 +142,7 @@ int main(int argc, char** argv)
             
             blobDetector.SetHSVRanges(ranges);
             detector.push_back(blobDetector);
-            cout << "Set Blob " << i << endl;
+            cerr << "Set Blob " << i << endl;
         }
         Mat targetData;
         bfs["Target_Data"] >> targetData;
@@ -157,7 +157,7 @@ int main(int argc, char** argv)
         targetDetector.SetHSVRanges(targetRanges);
     }
     
-    cout << "Initialising" << endl;
+    cerr << "Initialising" << endl;
     Mat thresh1, thresh2, dst1, dst2;
 
     clock_t beginTime = clock();;
@@ -170,7 +170,7 @@ int main(int argc, char** argv)
         /*frames++;
         if(float(clock() - beginTime)/CLOCKS_PER_SEC >= 1)
         {
-            //cout << "FPS: " << frames << " " << float(clock() - beginTime)/CLOCKS_PER_SEC <<endl;
+            //cerr << "FPS: " << frames << " " << float(clock() - beginTime)/CLOCKS_PER_SEC <<endl;
             frames = 0;
             beginTime = clock();
         }*/
@@ -185,7 +185,7 @@ int main(int argc, char** argv)
         t1.release();
         t2.release();
         
-        //cout << "Image remapping: " << float(clock() - beginTime)/CLOCKS_PER_SEC << endl;
+        //cerr << "Image remapping: " << float(clock() - beginTime)/CLOCKS_PER_SEC << endl;
         sum1 += float(clock() - beginTime)/CLOCKS_PER_SEC;
         beginTime = clock();
         
@@ -257,7 +257,7 @@ int main(int argc, char** argv)
         cv::drawKeypoints(dst1, targetVec1, dst1, cv::Scalar(255,0,255), cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
         cv::drawKeypoints(dst2, targetVec2, dst2, cv::Scalar(255,0,255), cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
         
-        //cout << "Blob detection: " << float(clock() - beginTime)/CLOCKS_PER_SEC << endl;
+        //cerr << "Blob detection: " << float(clock() - beginTime)/CLOCKS_PER_SEC << endl;
         sum2 += float(clock() - beginTime)/CLOCKS_PER_SEC;
         beginTime = clock();
         
@@ -290,7 +290,7 @@ int main(int argc, char** argv)
         {
             //for(int j = 2; j < 3; j++)
             //{
-            reprojectPoints(-200 + i * 100, yOffset, -200 + j * 100, point1, point2);
+            reprojectPoints(Point3f(-200 + i * 100, yOffset, -200 + j * 100), point1, point2);
             Scalar pixel = Scalar(255 - i * 50, 255 - j * 50, 255);
             drawPoints(dst1, dst2, point1, point2, pixel);
             //}
@@ -336,14 +336,14 @@ int main(int argc, char** argv)
         {
             destroyAllWindows();
             SetBlobColour(inputCapture1, inputCapture2);
-            cout << "Setting Blob HSV Data" << endl;
+            cerr << "Setting Blob HSV Data" << endl;
             FileStorage bfs(blobFileName, FileStorage::READ);
             
             bfs["HSV_Size"] >> hsvSize;
             detector.clear();
             if(hsvSize.data == NULL)
             {
-                printf("No BlobHSVColour data\n");
+                cerr << "No BlobHSVColour data" << endl;
                 
                 BlobHueDetector blobDetector;
                 blobDetector.SetDefaultHSVRanges();
@@ -351,7 +351,7 @@ int main(int argc, char** argv)
             }
             else
             {
-                printf("Found BlobHSVColour data\n");
+                cerr << "Found BlobHSVColour data" << endl;
                 blobNum = hsvSize.at<int>(0, 0);
                 
                 for(int i = 0; i < blobNum; i++)
@@ -421,15 +421,15 @@ int main(int argc, char** argv)
         }
 
 
-        //cout << "Draw on image: " << float(clock() - beginTime)/CLOCKS_PER_SEC << endl;
+        //cerr << "Draw on image: " << float(clock() - beginTime)/CLOCKS_PER_SEC << endl;
         
         fcount++;
-        //cout << fcount << endl;
+        //cerr << fcount << endl;
         if(fcount == 100)
         {
-            cout << "REMAP average: " << sum1/100 << endl;
-            cout << "DETECT average: " << sum2/100 << endl;
-            cout << "DRAW average: " << sum3/100 << endl;
+            cerr << "REMAP average: " << sum1/100 << endl;
+            cerr << "DETECT average: " << sum2/100 << endl;
+            cerr << "DRAW average: " << sum3/100 << endl;
             fcount = 0;
             sum1 = sum2 = sum3 = 0;
             //break;

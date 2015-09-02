@@ -27,7 +27,7 @@ void ControlArm::CalculateLinkLengths()
     link0 = CalculateLength(CalculateVector(jointPositions[1], jointPositions[0]));
     link1 = CalculateLength(CalculateVector(jointPositions[2], jointPositions[1]));
     link2 = CalculateLength(CalculateVector(jointPositions[3], jointPositions[2]));
-    //cout << "Link 0: " << link0 << " Link 1: " << link1 << " Link 2: " << link2 << endl;
+    //cerr << "Link 0: " << link0 << " Link 1: " << link1 << " Link 2: " << link2 << endl;
 }
 
 void ControlArm::GetArmPose(double angles[3])
@@ -46,7 +46,7 @@ void ControlArm::GetCurrentPose(double angles[3])
     
     currentAngles[2] = 3.14159 - CalculateAngle(CalculateVector(jointPositions[2], jointPositions[1]), CalculateVector(jointPositions[2], jointPositions[3]));
     
-    //cout << "Angle 0 " << currentAngles[0] << " Angle 1 " << currentAngles[1] << " Angle 2 " << currentAngles[2] << endl;
+    //cerr << "Angle 0 " << currentAngles[0] << " Angle 1 " << currentAngles[1] << " Angle 2 " << currentAngles[2] << endl;
 
     angles = currentAngles;
 }
@@ -54,7 +54,7 @@ void ControlArm::GetCurrentPose(double angles[3])
 void ControlArm::SetTarget(Point3f target)
 {
     targetPosition = target;
-    //cout << "TARGET: " << targetPosition.x << " " << targetPosition.y << " " << targetPosition.z << endl;
+    //cerr << "TARGET: " << targetPosition.x << " " << targetPosition.y << " " << targetPosition.z << endl;
 
     if(CalculateLength(CalculateVector(targetPosition, jointPositions[1])) > link1 + link2)
     {
@@ -66,10 +66,10 @@ void ControlArm::SetTarget(Point3f target)
         targetPosition.z = (pointDiff.z / absDiff) * (link1 + link2);
         targetPosition = targetPosition + jointPositions[1];
         
-        //cout << "OUT OF REACH. NEW TARGET: " << targetPosition.x << " " << targetPosition.y << " " << targetPosition.z << endl;
+        //cerr << "OUT OF REACH. NEW TARGET: " << targetPosition.x << " " << targetPosition.y << " " << targetPosition.z << endl;
     }
     FindInverseKinematics();
-    //cout << "NEW ANGLE0: " << jointAngles[0] << " ANGLE1: " << jointAngles[1] << " ANGLE2: " << jointAngles[2] << endl;
+    //cerr << "NEW ANGLE0: " << jointAngles[0] << " ANGLE1: " << jointAngles[1] << " ANGLE2: " << jointAngles[2] << endl;
 }
 
 void ControlArm::UpdateArmPose(Point3f detected)
@@ -85,7 +85,7 @@ void ControlArm::FindInverseKinematics()
     
     x = targetPosition.x - jointPositions[0].x;
     z = targetPosition.z - jointPositions[0].z;
-    //cout << "X: " << x << " Z: " << z << endl;
+    //cerr << "X: " << x << " Z: " << z << endl;
     
     jointAngles[0] = atan2(z, x);
     

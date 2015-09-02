@@ -28,12 +28,8 @@ public:
     Size boardSize;
 };
 
+bool RetrieveChessboardCorners(BoardSettings s, vector<vector<Point2f> >& imagePoints1, vector<vector<Point2f> >& imagePoints2, VideoCapture videoFeed1, VideoCapture videoFeed2, int iterations, bool remap, Mat mapX1, Mat mapY1, Mat mapX2, Mat mapY2);
+
+void CalcBoardCornerPositions(Size boardSize, float squareSize, vector<Point3f>& corners);
+
 void CalibrateEnvironment(VideoCapture& inputCapture1, VideoCapture& inputCapture2);
-
-static bool retrieveChessboardCorners(BoardSettings s, vector<vector<Point2f> >& imagePoints1,
-                                      vector<vector<Point2f> >& imagePoints2, VideoCapture videoFeed1,
-                                      VideoCapture videoFeed2, int iterations, bool remap, Mat mapX1,
-                                      Mat mapY1, Mat mapX2, Mat mapY2);
-
-
-static void calcBoardCornerPositions(Size boardSize, float squareSize, vector<Point3f>& corners);
