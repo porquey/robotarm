@@ -3,6 +3,8 @@
 
 #include <opencv2/core/core.hpp>
 
+#include "JointPositions.h"
+
 #ifndef _CRT_SECURE_NO_WARNINGS
 # define _CRT_SECURE_NO_WARNINGS
 #endif
@@ -39,10 +41,6 @@ public:
 
 protected:
     void FindInverseKinematics();
-    double CalculateAngle(Point3f a, Point3f b);
-    Point3f CalculateVector(Point3f a, Point3f b);
-    double CalculateLength(Point3f a);
-    Point3f PointToVec(const Point3f a);
     Point3f CalculateCompensationStep(Point3f detected);
 
 private:

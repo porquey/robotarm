@@ -225,59 +225,57 @@ bool BlobHueDetector::GetStripVectors(cv::Mat &src1, cv::Mat &src2, cv::KeyPoint
 {
     bool detected1 = false, detected2 = false;
     cv::Rect roi1, roi2;
-    /*if(counter1 < 5)
+    const int margin = 75;
+    if(counter1 < 5)
     {
-        int xLeft = lastBegin1.x - 50;
-        int yTop = lastBegin1.y - 50;
-        int xRight = lastEnd1.x + 50;
-        int yBottom = lastEnd1.y + 50;
+        int xLeft = lastBegin1.pt.x - margin;
+        int xRight = lastEnd1.pt.x + margin;
+        int yTop = lastBegin1.pt.y - margin;
+        int yBottom = lastEnd1.pt.y + margin;
         
-        if(xLeft > lastEnd1.x - 50)
+        if(xLeft > lastEnd1.pt.x - margin)
         {
-            xLeft = lastEnd1.x - 50;
+            xLeft = lastEnd1.pt.x - margin;
         }
         if(xLeft < 0)
         {
             xLeft = 0;
         }
         
-        if(xRight < lastBegin1.x + 50)
+        if(xRight < lastBegin1.pt.x + margin)
         {
-            xRight = lastBegin1.x + 50;
+            xRight = lastBegin1.pt.x + margin;
         }
         if(xRight > src1.cols - 1)
         {
             xRight = src1.cols - 1;
         }
         
-        if(yTop > lastEnd1.y - 50)
+        if(yTop > lastEnd1.pt.y - margin)
         {
-            yTop = lastEnd1.y - 50;
+            yTop = lastEnd1.pt.y - margin;
         }
         if(yTop < 0)
         {
             yTop = 0;
         }
         
-        if(yBottom < lastBegin1.y + 50)
+        if(yBottom < lastBegin1.pt.y + margin)
         {
-            yBottom = lastBegin1.y + 50;
+            yBottom = lastBegin1.pt.y + margin;
         }
         if(yBottom > src1.rows - 1)
         {
             yBottom = src1.rows - 1;
         }
         
-        
-        
         roi1 = cv::Rect(xLeft, yTop, xRight - xLeft + 1, yBottom - yTop + 1);
         cv::Mat roiMat = src1(roi1);
-        imshow("ROI1", roiMat);
         detected1 = GetStrip(roiMat, begin1, end1);
-        begin1.x += roi1.x;
-        end1.x += roi1.x;
-        begin1.y += roi1.y;
-        end1.y += roi1.y;
+        begin1.pt.x += roi1.x;
+        end1.pt.x += roi1.x;
+        begin1.pt.y += roi1.y;
+        end1.pt.y += roi1.y;
         if(detected1)
         {
             counter1 = 0;
@@ -290,53 +288,53 @@ bool BlobHueDetector::GetStripVectors(cv::Mat &src1, cv::Mat &src2, cv::KeyPoint
         }
     }
     else
-    {*/
+    {
         detected1 = GetStrip(src1, begin1, end1);
         if(detected1)
         {
-            //counter1 = 0;
+            counter1 = 0;
             lastBegin1 = begin1;
             lastEnd1 = end1;
         }
-   /* }
+    }
     
     if(counter2 < 5)
     {
-        int xLeft = lastBegin2.x - 50;
-        int yTop = lastBegin2.y - 50;
-        int xRight = lastEnd2.x + 50;
-        int yBottom = lastEnd2.y + 50;
+        int xLeft = lastBegin2.pt.x - margin;
+        int xRight = lastEnd2.pt.x + margin;
+        int yTop = lastBegin2.pt.y - margin;
+        int yBottom = lastEnd2.pt.y + margin;
         
-        if(xLeft > lastEnd2.x - 50)
+        if(xLeft > lastEnd2.pt.x - margin)
         {
-            xLeft = lastEnd2.x - 50;
+            xLeft = lastEnd2.pt.x - margin;
         }
         if(xLeft < 0)
         {
             xLeft = 0;
         }
         
-        if(xRight < lastBegin2.x + 50)
+        if(xRight < lastBegin2.pt.x + margin)
         {
-            xRight = lastBegin2.x + 50;
+            xRight = lastBegin2.pt.x + margin;
         }
         if(xRight > src2.cols - 1)
         {
             xRight = src2.cols - 1;
         }
         
-        if(yTop > lastEnd2.y - 50)
+        if(yTop > lastEnd2.pt.y - margin)
         {
-            yTop = lastEnd2.y - 50;
+            yTop = lastEnd2.pt.y - margin;
         }
         if(yTop < 0)
         {
             yTop = 0;
         }
         
-        if(yBottom < lastBegin2.y + 50)
+        if(yBottom < lastBegin2.pt.y + margin)
         {
-            yBottom = lastBegin2.y + 50;
+            yBottom = lastBegin2.pt.y + margin;
         }
         if(yBottom > src2.rows - 1)
         {
@@ -345,18 +343,16 @@ bool BlobHueDetector::GetStripVectors(cv::Mat &src1, cv::Mat &src2, cv::KeyPoint
         
         roi2 = cv::Rect(xLeft, yTop, xRight - xLeft + 1, yBottom - yTop + 1);
         cv::Mat roiMat = src2(roi2);
-        imshow("ROI2", roiMat);
         detected2 = GetStrip(roiMat, begin2, end2);
-        begin2.x += roi2.x;
-        end2.x += roi2.x;
-        begin1.y += roi2.y;
-        end2.y += roi2.y;
-        
+        begin2.pt.x += roi2.x;
+        end2.pt.x += roi2.x;
+        begin2.pt.y += roi2.y;
+        end2.pt.y += roi2.y;
         if(detected2)
         {
             counter2 = 0;
-            lastBegin2 = begin2;
-            lastEnd2 = end2;
+            lastBegin2 = begin1;
+            lastEnd2 = end1;
         }
         else
         {
@@ -364,15 +360,15 @@ bool BlobHueDetector::GetStripVectors(cv::Mat &src1, cv::Mat &src2, cv::KeyPoint
         }
     }
     else
-    {*/
+    {
         detected2 = GetStrip(src2, begin2, end2);
         if(detected2)
         {
-            //counter2 = 0;
+            counter2 = 0;
             lastBegin2 = begin2;
             lastEnd2 = end2;
         }
-    //}
+    }
     
     if(!detected1 || !detected2)
     {
@@ -411,8 +407,6 @@ bool BlobHueDetector::GetStrip(cv::Mat &src, cv::KeyPoint &begin, cv::KeyPoint &
     // Apply erosion or dilation on the image
     cv::erode(thresh, thresh, erosionElement);
     
-    imshow("Thresh", thresh);
-    
     std::vector<cv::KeyPoint> keypoints;
     detector.detect(thresh, keypoints);
     
@@ -427,7 +421,7 @@ bool BlobHueDetector::GetStrip(cv::Mat &src, cv::KeyPoint &begin, cv::KeyPoint &
     else
     {
         for(std::vector<cv::KeyPoint>::iterator blobIterator = keypoints.begin(); blobIterator != keypoints.end(); blobIterator++){
-            std::cout << "SIZE: " << blobIterator->size << " k is: " << blobSize << " j is " << blobSize2 << std::endl;
+
             if(blobIterator->size > blobSize)
             {
                 
@@ -443,10 +437,8 @@ bool BlobHueDetector::GetStrip(cv::Mat &src, cv::KeyPoint &begin, cv::KeyPoint &
             }
             i++;
         }
-        std::cout << "k is: " << blobSize << " j is " << blobSize2 << std::endl;
         begin = keypoints.at(k);
         end = keypoints.at(j);
-        std::cout << "begin: " << begin.pt << " end: " << end.pt << std::endl;
         return true;
     }
 }

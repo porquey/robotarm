@@ -59,7 +59,7 @@ void ControlArm::SetTarget(Point3f target)
     if(CalculateLength(CalculateVector(targetPosition, jointPositions[1])) > link1 + link2)
     {
         Point3f pointDiff = targetPosition - jointPositions[1];
-        double absDiff = CalculateLength(PointToVec(pointDiff));
+        double absDiff = CalculateLength(pointDiff);
         
         targetPosition.x = (pointDiff.x / absDiff) * (link1 + link2);
         targetPosition.y = (pointDiff.y / absDiff) * (link1 + link2);
@@ -97,45 +97,6 @@ void ControlArm::FindInverseKinematics()
     jointAngles[2] = atan2(sqrt(1 - d * d), d);
     jointAngles[1] = atan2(sqrt(s), sqrt(r)) - atan2(sin(jointAngles[2]), link1 + link2 * cos(jointAngles[2]));
     
-}
-
-double ControlArm::CalculateAngle(Point3f a, Point3f b)
-{
-    double mag1 = CalculateLength(a);
-    double mag2 = CalculateLength(b);
-    
-    if(mag1 == 0 || mag2 == 0)
-    {
-        //cout << "Vector magnitude = 0" << endl;
-        return 0;
-    }
-    double angle = acos((a.x * b.x + a.y * b.y + a.z * b.z)/(mag1 * mag2));
-    
-    return angle;
-}
-
-Point3f ControlArm::CalculateVector(Point3f a, Point3f b)
-{
-    Point3f c;
-    c.x = a.x - b.x;
-    c.y = a.y - b.y;
-    c.z = a.z - b.z;
-    return c;
-}
-
-double ControlArm::CalculateLength(Point3f a)
-{
-     return sqrt(a.x * a.x + a.y * a.y + a.z * a.z);
-}
-
-Point3f ControlArm::PointToVec(const Point3f a)
-{
-    Point3f b;
-    b.x = a.x;
-    b.y = a.y;
-    b.z = a.z;
-    
-    return b;
 }
 
 void ControlArm::InitFuzzyController()

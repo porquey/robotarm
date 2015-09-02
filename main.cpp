@@ -43,8 +43,8 @@ void reprojectPoints(double x, double y, double z, Point2f &pt1, Point2f &pt2)
     pt1.x = (x*fx1/(z + zTrans)) + cx1;
     pt1.y = (y*fy1/(z + zTrans)) + cy1;
     
-    pt2.x = (z*fx2/(x+xTrans))+ cx2;
-    pt2.y = (y*fy2/(x+xTrans))+ cy2;
+    pt2.x = (z*fx2/(xTrans - x))+ cx2;
+    pt2.y = (y*fy2/(xTrans - x))+ cy2;
     
 }
 
@@ -200,28 +200,7 @@ int main(int argc, char** argv)
                 KeyPoint keypoint1, keypoint2;
                 bool detected = detector[i].GetBlobCentres(image1, image2, keypoint1, keypoint2);
                 
-                double xPos = 0, yPos = 0, zPos = 0;
-                double x1, x2, y1, y2, a, b, c;
-                
-                
-                x1 = keypoint1.pt.x - cx1;
-                x2 = keypoint2.pt.x - cx2;
-                y1 = keypoint1.pt.y - cy1;
-                y2 = keypoint2.pt.y - cy2;
-                
-                a = (x1)/fx1;
-                b = (x2)/fx2;
-                c = a*b;
-                
-                xPos = (c*xTrans + a*zTrans)/(1+c);
-                zPos = (b*xTrans + zTrans)/(1+c);
-                yPos = -((y1)/fy1) * zPos;
-                zPos -= zTrans;
-                
-                Point3f coordTemp;
-                coordTemp.x = xPos;
-                coordTemp.y = yPos;
-                coordTemp.z = zPos;
+                Point3f coordTemp = Calculate3DPoint(keypoint1.pt, keypoint2.pt, cameraMatrix1, cameraMatrix2, translation);
                 coords.push_back(coordTemp);
                 detectedVec.push_back(detected);
                 keypointVec1.push_back(keypoint1);
@@ -248,7 +227,7 @@ int main(int argc, char** argv)
                     random.push_back(p3);
                     random.push_back(p4);
                     
-                    DeterminePairs(random, sorted, 0);
+                    DetermineBasePairs(random, sorted);
                     
                     beginVec1.push_back(sorted[0]);
                     endVec1.push_back(sorted[1]);
@@ -266,27 +245,7 @@ int main(int argc, char** argv)
         KeyPoint keypoint1, keypoint2;
         targetDetector.GetBlobCentres(image1, image2, keypoint1, keypoint2);
         
-        double xPos = 0, yPos = 0, zPos = 0;
-        double x1, x2, y1, y2, a, b, c;
-        
-        x1 = keypoint1.pt.x - cx1;
-        x2 = keypoint2.pt.x - cx2;
-        y1 = keypoint1.pt.y - cy1;
-        y2 = keypoint2.pt.y - cy2;
-        
-        a = (x1)/fx1;
-        b = (x2)/fx2;
-        c = a*b;
-        
-        xPos = (c*xTrans + a*zTrans)/(1+c);
-        zPos = (b*xTrans + zTrans)/(1+c);
-        yPos = -((y1)/fy1) * zPos;
-        zPos -= zTrans;
-        
-        Point3f targetCoord;
-        targetCoord.x = xPos;
-        targetCoord.y = yPos;
-        targetCoord.z = zPos;
+        Point3f targetCoord = Calculate3DPoint(keypoint1.pt, keypoint2.pt, cameraMatrix1, cameraMatrix2, translation);
         
         vector<KeyPoint> targetVec1;
         vector<KeyPoint> targetVec2;
@@ -341,8 +300,6 @@ int main(int argc, char** argv)
         imshow("Camera1", dst1);
         
         /*
-        
-        
         
         sum3 += float(clock() - beginTime)/CLOCKS_PER_SEC;
         beginTime = clock();
