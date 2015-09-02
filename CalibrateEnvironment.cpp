@@ -29,6 +29,9 @@ void CalibrateEnvironment(VideoCapture& inputCapture1, VideoCapture& inputCaptur
     }
     else{
         cerr << "Loaded intrinsics\n" << endl;
+        cerr << "Camera Matrix1: " << cameraMatrix1 << endl;
+        cerr << "Camera Matrix2: " << cameraMatrix2 << endl;
+        
     }
     
     Mat translation;
@@ -84,19 +87,20 @@ void CalibrateEnvironment(VideoCapture& inputCapture1, VideoCapture& inputCaptur
             vector<Point3f> objectPoints;
             vector<vector<Point2f> > imagePoints1, imagePoints2,  imagePoints3, imagePoints4;
             
-            if (RetrieveChessboardCorners(s, imagePoints1, imagePoints2, inputCapture1, inputCapture2, 5, 0, mapX1, mapY1, mapX2, mapY2))
-            {
+            if (retrieveChessboardCorners(s, imagePoints1, imagePoints2, inputCapture1, inputCapture2, ITERATIONS, 0, mapX1, mapY1, mapX2, mapY2)){
                 
                 vector<vector<Point3f> > objectPoints(1);
-                CalcBoardCornerPositions(s.boardSize, s.squareSize, objectPoints[0]);
+                calcBoardCornerPositions(s.boardSize, s.squareSize, objectPoints[0]);
                 objectPoints.resize(imagePoints1.size(),objectPoints[0]);
                 
                 Mat R, T, E, F;
                 Mat rmat1, rmat2, rvec;
-
+                
                 double rms = stereoCalibrate(objectPoints, imagePoints1, imagePoints2, cameraMatrix1, distCoeffs1, cameraMatrix2, distCoeffs2, imageSize, R, T, E, F,
-                                TermCriteria( CV_TERMCRIT_EPS+CV_TERMCRIT_ITER, 1000, 0.01),
-                                CV_CALIB_FIX_INTRINSIC);
+                                             TermCriteria( CV_TERMCRIT_EPS+CV_TERMCRIT_ITER, 1000, 0.01),
+                                             CV_CALIB_FIX_INTRINSIC);
+                
+                cout << "Translation og: " << T << endl;
                 
                 cerr << "Reprojection error reported by camera: " << rms << endl;
                 
@@ -104,6 +108,7 @@ void CalibrateEnvironment(VideoCapture& inputCapture1, VideoCapture& inputCaptur
                 cerr << "Origional rvec: " << rvec << endl;
                 rvec.at<double>(1,0) -= 1.570796327;
                 rvec = rvec/2;
+                cout << "subtracting vector: " << rvec << endl;
                 Rodrigues(rvec, rmat1);
                 invert(rmat1,rmat2);
                 
@@ -113,22 +118,37 @@ void CalibrateEnvironment(VideoCapture& inputCapture1, VideoCapture& inputCaptur
                                         getOptimalNewCameraMatrix(cameraMatrix2, distCoeffs2, imageSize, 1, imageSize, 0), imageSize, CV_32FC1, mapX2, mapY2);
                 
                 
-                Mat pointsMat1 = Mat(imagePoints1);
-                Mat pointsMat2 = Mat(imagePoints2);
-                
-                
-                undistortPoints(pointsMat1, imagePoints1, cameraMatrix1, distCoeffs1, rmat1,getOptimalNewCameraMatrix(cameraMatrix1, distCoeffs1, imageSize, 1, imageSize, 0));
-                undistortPoints(pointsMat2, imagePoints2, cameraMatrix2, distCoeffs2, rmat2,getOptimalNewCameraMatrix(cameraMatrix2, distCoeffs2, imageSize, 1, imageSize, 0));
+                for  (int i = 0; i < imagePoints1.size(); i++){
+                    Mat pointsMat1 = Mat(imagePoints1[i]);
+                    Mat pointsMat2 = Mat(imagePoints2[i]);
+                    
+                    
+                    undistortPoints(pointsMat1, imagePoints1[i], cameraMatrix1, distCoeffs1, rmat1,getOptimalNewCameraMatrix(cameraMatrix1, distCoeffs1, imageSize, 1, imageSize, 0));
+                    undistortPoints(pointsMat2, imagePoints2[i], cameraMatrix2, distCoeffs2, rmat2,getOptimalNewCameraMatrix(cameraMatrix2, distCoeffs2, imageSize, 1, imageSize, 0));
+                    
+                    pointsMat1.release();
+                    pointsMat2.release();
+                }
                 
                 Mat temp1, temp2;
                 R.release();
                 T.release();
                 E.release();
                 F.release();
+                calcBoardCornerPositions(s.boardSize, s.squareSize, objectPoints[0]);
+                objectPoints.resize(imagePoints1.size(),objectPoints[0]);
                 
                 stereoCalibrate(objectPoints, imagePoints1, imagePoints2, cameraMatrix1, distCoeffs1, cameraMatrix2, distCoeffs2, imageSize, R, T, E, F,
                                 TermCriteria( CV_TERMCRIT_EPS+CV_TERMCRIT_ITER, 1000, 0.01),
                                 CV_CALIB_FIX_INTRINSIC);
+                
+                translation = T;
+                double temp;
+                temp = -translation.at<double>(0,0);
+                translation.at<double>(0,0) = translation.at<double>(2,0);
+                translation.at<double>(2,0) = temp;
+                
+                cout << "Translation reproj: " << translation << endl;
                 
                 Rodrigues(R, rvec);
                 cerr << "Reprojected rvec: " << rvec << endl;
@@ -136,8 +156,7 @@ void CalibrateEnvironment(VideoCapture& inputCapture1, VideoCapture& inputCaptur
                 imagePoints1.clear();
                 imagePoints2.clear();
                 
-                if (RetrieveChessboardCorners(s, imagePoints1, imagePoints2, inputCapture1, inputCapture2, 5,1, mapX1, mapY1, mapX2, mapY2))
-                {
+                if (retrieveChessboardCorners(s, imagePoints1, imagePoints2, inputCapture1, inputCapture2, ITERATIONS,1, mapX1, mapY1, mapX2, mapY2)){
                     
                     temp1.release();
                     temp2.release();
@@ -146,24 +165,23 @@ void CalibrateEnvironment(VideoCapture& inputCapture1, VideoCapture& inputCaptur
                     E.release();
                     F.release();
                     
-                    stereoCalibrate(objectPoints, imagePoints3, imagePoints4, cameraMatrix1, temp1, cameraMatrix2, temp2, imageSize, R, T, E, F,
+                    stereoCalibrate(objectPoints, imagePoints1, imagePoints2, cameraMatrix1, temp1, cameraMatrix2, temp2, imageSize, R, T, E, F,
                                     TermCriteria( CV_TERMCRIT_EPS+CV_TERMCRIT_ITER, 1000, 0.01),
                                     CV_CALIB_FIX_INTRINSIC);
                     
                     cerr << "Reprojection error reported by camera: " << rms << endl;
-
+                    
                     Rodrigues(R, rvec);
                     cerr << "Adjusted rvec: " << rvec << endl;
                     
-                    translation = T;
+                    cout << "Translation check: " << T << endl;
+                    
                     cerr << "big success" << endl;
                     
                     temp1.release();
                     temp2.release();
                 }
                 
-                pointsMat1.release();
-                pointsMat2.release();
                 rvec.release();
                 rmat1.release();
                 rmat2.release();
@@ -181,7 +199,7 @@ void CalibrateEnvironment(VideoCapture& inputCapture1, VideoCapture& inputCaptur
 }
 
 
-void CalcBoardCornerPositions(Size boardSize, float squareSize, vector<Point3f>& corners)
+static void calcBoardCornerPositions(Size boardSize, float squareSize, vector<Point3f>& corners)
 {
     corners.clear();
     
@@ -190,7 +208,7 @@ void CalcBoardCornerPositions(Size boardSize, float squareSize, vector<Point3f>&
             corners.push_back(Point3f(float( j*squareSize ), float( i*squareSize ), 0));
 }
 
-bool RetrieveChessboardCorners(BoardSettings s, vector<vector<Point2f> >& imagePoints1,
+static bool retrieveChessboardCorners(BoardSettings s, vector<vector<Point2f> >& imagePoints1,
                                       vector<vector<Point2f> >& imagePoints2, VideoCapture videoFeed1,
                                       VideoCapture videoFeed2, int iterations, bool remapFirst, Mat mapX1,
                                       Mat mapY1, Mat mapX2, Mat mapY2){
@@ -265,9 +283,10 @@ bool RetrieveChessboardCorners(BoardSettings s, vector<vector<Point2f> >& imageP
             t1.release();
             t2.release();
         }
+        
         imshow("Image View1", image1);
         imshow("Image View2", image2);
-
+        
         
         
     }

@@ -40,11 +40,12 @@ bool checkBlobs = false;
 
 void reprojectPoints(double x, double y, double z, Point2f &pt1, Point2f &pt2)
 {
-    pt1.x = (x*fx1/(z + zTrans)) + cx1;
-    pt1.y = (y*fy1/(z + zTrans)) + cy1;
+    //xscreen = fx * (X/Z) + cx
+    pt1.x = (x*fx1)/(z+zTrans) + cx1;
+    pt1.y = (y*fy1)/(z+zTrans) + cy1;
     
-    pt2.x = (z*fx2/(xTrans - x))+ cx2;
-    pt2.y = (y*fy2/(xTrans - x))+ cy2;
+    pt2.x = (z*fx2)/(xTrans-x) + cx2;
+    pt2.y = ((y+yTrans)*fy2)/(xTrans-x)+ cy2;
     
 }
 
