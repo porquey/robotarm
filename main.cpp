@@ -24,6 +24,11 @@
 #define CAMERA1 1
 #define CAMERA2 2
 
+#define LINK0 15.8
+#define LINK1 20.2
+#define LINK2 17.4
+
+
 using namespace cv;
 using namespace std;
 
@@ -153,7 +158,7 @@ int main(int argc, char** argv)
 
     clock_t beginTime = clock();;
     //int frames = 0;
-    ControlArm control;
+    ControlArm control(LINK0, LINK1, LINK2);
 
     while(inputCapture1.isOpened() && inputCapture2.isOpened())
     {
@@ -182,7 +187,15 @@ int main(int argc, char** argv)
         
         vector<bool> detectedVec;
         vector<Point3f> coords, coordsLast;
+        static Point3f base, tip;
+        
+        static Point3f joint1, joint2;
+        double angle1, angle2;
+        static Point3f begin0, begin1, begin2, end0, end1, end2;
+        static Point3f link0[2], link1[2], link2[2];
+        static KeyPoint random0[4], sorted0[4], random1[4], sorted1[4], random2[4], sorted2[4];
 
+        
         if(checkBlobs)
         {
             vector<KeyPoint> keypointVec1, keypointVec2;
@@ -229,19 +242,19 @@ int main(int argc, char** argv)
                 
             }*/
             KeyPoint p1, p2, p3, p4;
-            static KeyPoint random0[4], sorted0[4], random1[4], sorted1[4], random2[4], sorted2[4];
             
             dst1 = image1.clone();
             dst2 = image2.clone();
             
-            static Point3f joint1, joint2;
-            double angle1, angle2;
-            Point3f begin0, begin1, begin2, end0, end1, end2;
-            static Point3f link0[2], link1[2], link2[2];
+            static bool firstDetect0 = false, firstDetect1 = false;
 
             bool detected0 = detector[0].GetStripVectors(image1, image2, p1, p2, p3, p4);
             if(detected0)
             {
+                if(!firstDetect0)
+                {
+                    firstDetect0 = true;
+                }
                 random0[0] = p1;
                 random0[1] = p2;
                 random0[2] = p3;
@@ -252,11 +265,16 @@ int main(int argc, char** argv)
                 end0 = Calculate3DPoint(sorted0[1].pt, sorted0[3].pt, cameraMatrix1, cameraMatrix2, translation);
                 link0[0] = begin0;
                 link0[1] = end0;
+                base = begin0;
             }
                 
             bool detected1 = detector[1].GetStripVectors(image1, image2, p1, p2, p3, p4);
-            if(detected1)
+            if(detected1 && firstDetect0)
             {
+                if(!firstDetect1)
+                {
+                    firstDetect1 = true;
+                }
                 random1[0] = p1;
                 random1[1] = p2;
                 random1[2] = p3;
@@ -272,7 +290,7 @@ int main(int argc, char** argv)
                     //cerr << "Detected joint 1! Angle is: " << angle1 << endl;
 
             bool detected2 = detector[2].GetStripVectors(image1, image2, p1, p2, p3, p4);
-            if(detected2)
+            if(detected2 && firstDetect1)
             {
                 random2[0] = p1;
                 random2[1] = p2;
@@ -287,7 +305,7 @@ int main(int argc, char** argv)
                 link2[1] = end2;
                 CalculateJoint(link1, link2, joint2, angle2);
                 //cerr << "Detected joint 2! Angle is: " << angle2 << endl;
-
+                tip = begin2;
             }
             
             Point2f joint11, joint12, joint21, joint22;
@@ -333,7 +351,8 @@ int main(int argc, char** argv)
             circle(dst2, sorted0[2].pt, 5, Scalar(255, 0, 0));
             circle(dst2, sorted0[3].pt, 5, Scalar(0, 0, 255));
             line(dst2, sorted0[2].pt, sorted0[3].pt, Scalar(255,0,0));
-
+            
+            
             
             circle(dst1, sorted1[0].pt, 5, Scalar(255, 0, 0));
             circle(dst1, sorted1[1].pt, 5, Scalar(0, 0, 255));
@@ -342,24 +361,26 @@ int main(int argc, char** argv)
             circle(dst2, sorted1[2].pt, 5, Scalar(255, 0, 0));
             circle(dst2, sorted1[3].pt, 5, Scalar(0, 0, 255));
             line(dst2, sorted1[2].pt, sorted1[3].pt, Scalar(255,0,0));
-
+            
+            
+            
             circle(dst1, sorted2[0].pt, 5, Scalar(255, 0, 0));
             circle(dst1, sorted2[1].pt, 5, Scalar(0, 0, 255));
             line(dst1, sorted2[0].pt, sorted2[1].pt, Scalar(255,0,0));
-
+                
             circle(dst2, sorted2[2].pt, 5, Scalar(255, 0, 0));
             circle(dst2, sorted2[3].pt, 5, Scalar(0, 0, 255));
             line(dst2, sorted2[2].pt, sorted2[3].pt, Scalar(255,0,0));
-
+            
             string posStr = "X: " + to_string(joint1.x) + "  Y: " + to_string(joint1.y) + "  Z: " + to_string(joint1.z);
             putText(dst1, posStr, Point(5, 15 * 1), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 255, 255));
             posStr = "X: " + to_string(joint2.x) + "  Y: " + to_string(joint2.y) + "  Z: " + to_string(joint2.z);
             putText(dst1, posStr, Point(5, 15 * 2), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 255, 255));
             
             string angleStr = "JOINT1: " + to_string(angle1);
-            putText(dst2, angleStr, Point(5, 15 * 1), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 255, 255));
-            angleStr = "JOINT2: " + to_string(angle2);
             putText(dst2, angleStr, Point(5, 15 * 2), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 255, 255));
+            angleStr = "JOINT2: " + to_string(angle2);
+            putText(dst2, angleStr, Point(5, 15 * 3), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 255, 255));
 
             /*cv::drawKeypoints(image1, beginVec1, dst1, cv::Scalar(255, 0, 0), cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
             cv::drawKeypoints(image2, beginVec2, dst2, cv::Scalar(255, 0, 0), cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
@@ -373,8 +394,8 @@ int main(int argc, char** argv)
         Point3f targetCoord = Calculate3DPoint(keypoint1.pt, keypoint2.pt, cameraMatrix1, cameraMatrix2, translation);
         
         
-        circle(dst1, keypoint1.pt, 5, Scalar(255, 255, 0));
-        circle(dst2, keypoint2.pt, 5, Scalar(255, 255, 0));
+        circle(dst1, keypoint1.pt, 5, Scalar(0, 255, 255));
+        circle(dst2, keypoint2.pt, 5, Scalar(0, 255, 255));
         
         /*vector<KeyPoint> targetVec1;
         vector<KeyPoint> targetVec2;
@@ -410,6 +431,48 @@ int main(int argc, char** argv)
         putText(dst1, posStr, Point(5, 15 * 4), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 255, 255));
         
         
+        /////CONTROL/////
+        
+        
+        vector<Point3f> joints;
+        joints.push_back(base);
+        joints.push_back(joint1);
+        joints.push_back(joint2);
+        joints.push_back(tip);
+        //cerr << base << " " << joint1 << " " << joint2 << " " << tip << endl;
+        control.SetArmPose(joints);
+        control.SetTarget(targetCoord);
+        static double currAngles[3];
+        control.GetCurrentPose(currAngles);
+        
+        string angleStr;
+        angleStr = "JOINT0: " + to_string(currAngles[0]);
+        putText(dst2, angleStr, Point(200, 15 * 1), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 255));
+        angleStr = "JOINT1: " + to_string(currAngles[1]);
+        putText(dst2, angleStr, Point(200, 15 * 2), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 255));
+        angleStr = "JOINT2: " + to_string(currAngles[2]);
+        putText(dst2, angleStr, Point(200, 15 * 3), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 255));
+        
+        double angles[3];
+        control.GetArmPose(angles);
+        angleStr = "SET0: " + to_string(angles[0]);
+        putText(dst2, angleStr, Point(5, 15 * 4), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 255));
+        angleStr = "SET1: " + to_string(angles[1]);
+        putText(dst2, angleStr, Point(5, 15 * 5), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 255));
+        angleStr = "SET2: " + to_string(angles[2]);
+        putText(dst2, angleStr, Point(5, 15 * 6), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 255));
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        ///////
+        
+        
         Point2f point1;
         Point2f point2;
         
@@ -421,7 +484,7 @@ int main(int argc, char** argv)
             //{
             ReprojectPoints(Point3f(-200 + i * 100, yOffset, -200 + j * 100), point1, point2, cameraMatrix1, cameraMatrix2, translation);
             Scalar pixel = Scalar(255 - i * 50, 255 - j * 50, 255);
-            drawPoints(dst1, dst2, point1, point2, pixel);
+            //drawPoints(dst1, dst2, point1, point2, pixel);
             //}
         }
         
@@ -556,9 +619,9 @@ int main(int argc, char** argv)
         //cerr << fcount << endl;
         if(fcount == 100)
         {
-            cerr << "REMAP average: " << sum1/100 << endl;
-            cerr << "DETECT average: " << sum2/100 << endl;
-            cerr << "DRAW average: " << sum3/100 << endl;
+            //cerr << "REMAP average: " << sum1/100 << endl;
+            //cerr << "DETECT average: " << sum2/100 << endl;
+            //cerr << "DRAW average: " << sum3/100 << endl;
             fcount = 0;
             sum1 = sum2 = sum3 = 0;
             //break;

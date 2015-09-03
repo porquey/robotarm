@@ -32,7 +32,7 @@ void ReprojectPoints(Point3f pt, Point2f &pt1, Point2f &pt2, Mat &cameraMatrix1,
     
 }
 
-void DetermineBasePairs(KeyPoint random[4], KeyPoint sorted[4])
+void DetermineBasePairs(KeyPoint *random, KeyPoint *sorted)
 {
     KeyPoint a = random[0];
     KeyPoint b = random[1];
@@ -62,7 +62,7 @@ void DetermineBasePairs(KeyPoint random[4], KeyPoint sorted[4])
 }
 
 
-void DeterminePairs(KeyPoint random[4], KeyPoint sorted[4], Point pt1, Point pt2)
+void DeterminePairs(KeyPoint *random, KeyPoint *sorted, Point pt1, Point pt2)
 {
     KeyPoint a = random[0];
     KeyPoint b = random[1];
@@ -97,7 +97,7 @@ void CalculateLinkVector(vector<Point2f> points, vector<Point3f> linkPoints, Mat
     linkPoints.push_back(Calculate3DPoint(points[1], points[3], cameraMatrix1, cameraMatrix2, translation));
 }
 */
-void CalculateJoint(Point3f link1[2], Point3f link2[2], Point3f& joint, double &angle)
+void CalculateJoint(Point3f *link1, Point3f *link2, Point3f& joint, double &angle)
 {
     Point3f vec1 = CalculateVector(link1[0], link1[1]);
     Point3f vec2 = CalculateVector(link2[1], link2[0]);

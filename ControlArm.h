@@ -15,6 +15,22 @@ using namespace cv;
 class ControlArm
 {
 public:
+    class PIDControl
+    {
+    public:
+        PIDControl();
+        double update(double angle, double dest);
+        void reset();
+        
+    private:
+        double lastError;
+        double integral;
+        double Kp;
+        double Ki;
+        double Kd;
+    };
+    
+public:
     class FuzzyRule
     {
     public:
@@ -33,18 +49,20 @@ public:
     ControlArm(double l0, double l1, double l2);
     void SetArmPose(vector<Point3f> joints);
     void CalculateLinkLengths();
-    void GetArmPose(double angles[3]);
-    void GetCurrentPose(double angles[3]);
+    void SetLinkLengths(double l0, double l1, double l2);
+    void GetArmPose(double *angles);
+    void GetCurrentPose(double *angles);
+    void SendJointActuators(int diff0, int diff1, int diff2);
     void SetTarget(Point3f target);
     void UpdateArmPose(Point3f detected);
     void InitFuzzyController();
-
+    
 protected:
     void FindInverseKinematics();
     Point3f CalculateCompensationStep(Point3f detected);
-
+    
 private:
-
+    
     double link0, link1, link2;
     Point3f jointPositions[5];
     double jointAngles[3];
