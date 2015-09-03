@@ -8,88 +8,96 @@
 
 #include "JointPositions.h"
 
-bool DetermineBasePairs(vector<KeyPoint> &random, vector<KeyPoint> &sorted)
+void ReprojectPoints(Point3f pt, Point2f &pt1, Point2f &pt2, Mat &cameraMatrix1, Mat &cameraMatrix2, Mat &translation)
 {
-    if(random.size() != 4)
-    {
-        return false;
-    }
+    double fx1 = cameraMatrix1.at<double>(0, 0);
+    double cx1 = cameraMatrix1.at<double>(0, 2);
+    double fy1 = cameraMatrix1.at<double>(1, 1);
+    double cy1 = cameraMatrix1.at<double>(1, 2);
     
+    double fx2 = cameraMatrix2.at<double>(0, 0);
+    double cx2 = cameraMatrix2.at<double>(0, 2);
+    double fy2 = cameraMatrix2.at<double>(1, 1);
+    double cy2 = cameraMatrix2.at<double>(1, 2);
+    
+    double xTrans = translation.at<double>(0, 0);
+    double yTrans = translation.at<double>(0, 1);
+    double zTrans = translation.at<double>(0, 2);
+    
+    pt1.x = (pt.x * fx1) / (pt.z + zTrans) + cx1;
+    pt1.y = ((pt.y - yTrans) * fy1) / (pt.z + zTrans) + cy1;
+    
+    pt2.x = (pt.z * fx2) / (xTrans - pt.x) + cx2;
+    pt2.y = ((pt.y + yTrans) * fy2) / (xTrans - pt.x) + cy2;
+    
+}
+
+void DetermineBasePairs(KeyPoint random[4], KeyPoint sorted[4])
+{
     KeyPoint a = random[0];
     KeyPoint b = random[1];
     KeyPoint c = random[2];
     KeyPoint d = random[3];
-    
-    sorted.clear();
     
     if(a.pt.y > b.pt.y)
     {
-        sorted.push_back(a);
-        sorted.push_back(b);
+        sorted[0] = a;
+        sorted[1] = b;
     }
     else
     {
-        sorted.push_back(b);
-        sorted.push_back(a);
+        sorted[0] = b;
+        sorted[1] = a;
     }
     if(c.pt.y > d.pt.y)
     {
-        sorted.push_back(c);
-        sorted.push_back(d);
+        sorted[2] = c;
+        sorted[3] = d;
     }
     else
     {
-        sorted.push_back(d);
-        sorted.push_back(c);
+        sorted[2] = d;
+        sorted[3] = c;
     }
-    return true;
 }
 
 
-bool DeterminePairs(vector<KeyPoint> &random, vector<KeyPoint> &sorted, Point pt1, Point pt2)
+void DeterminePairs(KeyPoint random[4], KeyPoint sorted[4], Point pt1, Point pt2)
 {
-    if(random.size() != 4)
-    {
-        return false;
-    }
-    
     KeyPoint a = random[0];
     KeyPoint b = random[1];
     KeyPoint c = random[2];
     KeyPoint d = random[3];
     
-    sorted.clear();
-    
     if(CalculateDisplacement(a.pt, pt1) < CalculateDisplacement(b.pt, pt1))
     {
-        sorted.push_back(a);
-        sorted.push_back(b);
+        sorted[0] = a;
+        sorted[1] = b;
     }
     else
     {
-        sorted.push_back(b);
-        sorted.push_back(a);
+        sorted[0] = b;
+        sorted[1] = a;
     }
     if(CalculateDisplacement(c.pt, pt1) < CalculateDisplacement(d.pt, pt1))
     {
-        sorted.push_back(c);
-        sorted.push_back(d);
+        sorted[2] = c;
+        sorted[3] = d;
     }
     else
     {
-        sorted.push_back(d);
-        sorted.push_back(c);
+        sorted[2] = d;
+        sorted[3] = c;
     }
-    return true;
 }
-
+/*
 void CalculateLinkVector(vector<Point2f> points, vector<Point3f> linkPoints, Mat &cameraMatrix1, Mat &cameraMatrix2, Mat &translation)
 {
     linkPoints.push_back(Calculate3DPoint(points[0], points[2], cameraMatrix1, cameraMatrix2, translation));
     linkPoints.push_back(Calculate3DPoint(points[1], points[3], cameraMatrix1, cameraMatrix2, translation));
 }
-
-void CalculateJoint(vector<Point3f> link1, vector<Point3f> link2, Point3f& joint, double &angle)
+*/
+void CalculateJoint(Point3f link1[2], Point3f link2[2], Point3f& joint, double &angle)
 {
     Point3f vec1 = CalculateVector(link1[0], link1[1]);
     Point3f vec2 = CalculateVector(link2[1], link2[0]);
@@ -131,24 +139,24 @@ Point3f Calculate3DPoint(Point2f pt1, Point2f pt2, Mat &cameraMatrix1, Mat &came
     
     double fx2 = cameraMatrix2.at<double>(0, 0);
     double cx2 = cameraMatrix2.at<double>(0, 2);
-    //double fy2 = cameraMatrix2.at<double>(1, 1);
-    //double cy2 = cameraMatrix2.at<double>(1, 2);
+    double fy2 = cameraMatrix2.at<double>(1, 1);
+    double cy2 = cameraMatrix2.at<double>(1, 2);
     
     double xTrans = translation.at<double>(0, 0);
-    //double yTrans = distance.at<double>(0, 1);
+    double yTrans = translation.at<double>(0, 1);
     double zTrans = translation.at<double>(0, 2);
     
     double x1 = pt1.x - cx1;
     double x2 = pt2.x - cx2;
     double y1 = pt1.y - cy1;
-    //double y2 = pixels2.y - cy2;
+    double y2 = pt2.y - cy2;
     
     double a = (x1)/fx1;
     double b = (x2)/fx2;
     
     double xPos = (b*xTrans + zTrans)/(1/a+b);
     double zPos = (xTrans - a*zTrans)/(1/b+a);
-    double yPos = -((y1)/fy1) * (zPos+zTrans);
+    double yPos = (y1/fy1 * (zPos+zTrans) + yTrans + y2/fy2 * (-xPos+xTrans))/2;
 
     return Point3f(xPos, yPos, zPos);
 }

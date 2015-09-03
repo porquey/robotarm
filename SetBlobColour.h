@@ -1,3 +1,8 @@
+#ifndef SET_BLOB_COLOUR_H
+#define SET_BLOB_COLOUR_H
+
+
+
 #include <iostream>
 #include <sstream>
 #include <time.h>
@@ -27,5 +32,11 @@ static int iHighS = 255;
 static int iLowV = 0;
 static int iHighV = 255;
 
+static int erosion = 3;
+static int dilation = 3;
+
 void MouseCallBack(int event, int x, int y, int flags, void* userData);
 void SetBlobColour(VideoCapture& inputCapture1, VideoCapture& inputCapture2);
+void ApplyMorphologicalOperation(Mat &img, int erosionSize, int dilationSize);
+
+#endif

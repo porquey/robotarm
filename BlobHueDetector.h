@@ -1,6 +1,7 @@
 #include "opencv2/opencv.hpp"
 #include "BetterBlobDetector.h"
 #include "HSVRange.h"
+#include "SetBlobColour.h"
 #include <iostream>
 
 #ifndef _CRT_SECURE_NO_WARNINGS
@@ -16,7 +17,7 @@ public:
     bool GetBlobCentres(cv::Mat &src1, cv::Mat &src2, cv::KeyPoint &keypoint1, cv::KeyPoint &keypoint2);
     bool GetBlob(cv::Mat &src, cv::KeyPoint &keypoint);
     bool GetStripVectors(cv::Mat &src1, cv::Mat &src2, cv::KeyPoint &begin1, cv::KeyPoint &end1, cv::KeyPoint &begin2, cv::KeyPoint &end2);
-    bool GetStrip(cv::Mat &src, cv::KeyPoint &begin, cv::KeyPoint &end);
+    bool GetStrip(cv::Mat &src, cv::KeyPoint &begin, cv::KeyPoint &end, cv::Mat &thresh);
     void SetHSVRanges(const HSVRanges range);
     void SetDefaultHSVRanges();
 private:

@@ -23,7 +23,7 @@ lastEnd2()
     
     // Filter by Area.
     params.filterByArea = true;
-    params.minArea = 150;
+    params.minArea = 100;
     params.maxArea = 10000;
     
     // Filter by Circularity
@@ -174,7 +174,20 @@ bool BlobHueDetector::GetBlob(cv::Mat &src, cv::KeyPoint &keypoint)
 {
     cv::Mat hsv, thresh;
     cv::cvtColor(src, hsv, CV_BGR2HSV);
-    cv::inRange(hsv, cv::Scalar(iLowH, iLowS, iLowV), cv::Scalar(iHighH, iHighS, iHighV), thresh);
+    
+    if(iLowH > iHighH)
+    {
+        Mat temp1, temp2;
+        inRange(hsv, Scalar(0, iLowS, iLowV), Scalar(iHighH, iHighS, iHighV), temp1);
+        inRange(hsv, Scalar(iLowH, iLowS, iLowV), Scalar(179, iHighS, iHighV), temp2);
+        
+        bitwise_or(temp1, temp2, thresh);
+    }
+    else
+    {
+        inRange(hsv, Scalar(iLowH, iLowS, iLowV), Scalar(iHighH, iHighS, iHighV), thresh);
+    }
+
     thresh = 255 - thresh;
     int erosionSize = 3;
     int dilationSize = 4;
@@ -224,6 +237,7 @@ bool BlobHueDetector::GetBlob(cv::Mat &src, cv::KeyPoint &keypoint)
 bool BlobHueDetector::GetStripVectors(cv::Mat &src1, cv::Mat &src2, cv::KeyPoint &begin1, cv::KeyPoint &end1, cv::KeyPoint &begin2, cv::KeyPoint &end2)
 {
     bool detected1 = false, detected2 = false;
+    cv::Mat thresh1, thresh2;
     cv::Rect roi1, roi2;
     const int margin = 75;
     if(counter1 < 5)
@@ -271,11 +285,14 @@ bool BlobHueDetector::GetStripVectors(cv::Mat &src1, cv::Mat &src2, cv::KeyPoint
         
         roi1 = cv::Rect(xLeft, yTop, xRight - xLeft + 1, yBottom - yTop + 1);
         cv::Mat roiMat = src1(roi1);
-        detected1 = GetStrip(roiMat, begin1, end1);
+        //imshow("ROI1", roiMat);
+
+        detected1 = GetStrip(roiMat, begin1, end1, thresh1);
         begin1.pt.x += roi1.x;
         end1.pt.x += roi1.x;
         begin1.pt.y += roi1.y;
         end1.pt.y += roi1.y;
+
         if(detected1)
         {
             counter1 = 0;
@@ -289,7 +306,7 @@ bool BlobHueDetector::GetStripVectors(cv::Mat &src1, cv::Mat &src2, cv::KeyPoint
     }
     else
     {
-        detected1 = GetStrip(src1, begin1, end1);
+        detected1 = GetStrip(src1, begin1, end1, thresh1);
         if(detected1)
         {
             counter1 = 0;
@@ -343,7 +360,9 @@ bool BlobHueDetector::GetStripVectors(cv::Mat &src1, cv::Mat &src2, cv::KeyPoint
         
         roi2 = cv::Rect(xLeft, yTop, xRight - xLeft + 1, yBottom - yTop + 1);
         cv::Mat roiMat = src2(roi2);
-        detected2 = GetStrip(roiMat, begin2, end2);
+        //imshow("ROI2", roiMat);
+
+        detected2 = GetStrip(roiMat, begin2, end2, thresh2);
         begin2.pt.x += roi2.x;
         end2.pt.x += roi2.x;
         begin2.pt.y += roi2.y;
@@ -351,8 +370,8 @@ bool BlobHueDetector::GetStripVectors(cv::Mat &src1, cv::Mat &src2, cv::KeyPoint
         if(detected2)
         {
             counter2 = 0;
-            lastBegin2 = begin1;
-            lastEnd2 = end1;
+            lastBegin2 = begin2;
+            lastEnd2 = end2;
         }
         else
         {
@@ -361,7 +380,7 @@ bool BlobHueDetector::GetStripVectors(cv::Mat &src1, cv::Mat &src2, cv::KeyPoint
     }
     else
     {
-        detected2 = GetStrip(src2, begin2, end2);
+        detected2 = GetStrip(src2, begin2, end2, thresh2);
         if(detected2)
         {
             counter2 = 0;
@@ -377,40 +396,37 @@ bool BlobHueDetector::GetStripVectors(cv::Mat &src1, cv::Mat &src2, cv::KeyPoint
         begin2 = lastBegin2;
         end2 = lastEnd2;
     }
-    
+    imshow("Thresh1", thresh1);
+    imshow("Thresh2", thresh2);
     return detected1 && detected2;
 }
 
-bool BlobHueDetector::GetStrip(cv::Mat &src, cv::KeyPoint &begin, cv::KeyPoint &end)
+bool BlobHueDetector::GetStrip(cv::Mat &src, cv::KeyPoint &begin, cv::KeyPoint &end, Mat& thresh)
 {
-    cv::Mat hsv, thresh;
+    cv::Mat hsv;
     cv::cvtColor(src, hsv, CV_BGR2HSV);
-    cv::inRange(hsv, cv::Scalar(iLowH, iLowS, iLowV), cv::Scalar(iHighH, iHighS, iHighV), thresh);
-    thresh = 255 - thresh;
-    int erosionSize = 1;
-    int dilationSize = 2;
     
-    cv::Mat erosionElement = cv::getStructuringElement(cv::MORPH_ELLIPSE,
-                                                       cv::Size(2 * erosionSize + 1, 2 * erosionSize + 1),
-                                                       cv::Point(erosionSize, erosionSize));
+    if(iLowH > iHighH)
+    {
+        Mat temp1, temp2;
+        inRange(hsv, Scalar(0, iLowS, iLowV), Scalar(iHighH, iHighS, iHighV), temp1);
+        inRange(hsv, Scalar(iLowH, iLowS, iLowV), Scalar(179, iHighS, iHighV), temp2);
+        
+        bitwise_or(temp1, temp2, thresh);
+    }
+    else
+    {
+        inRange(hsv, Scalar(iLowH, iLowS, iLowV), Scalar(iHighH, iHighS, iHighV), thresh);
+    }    thresh = 255 - thresh;
     
-    // Apply erosion or dilation on the image
-    cv::erode(thresh, thresh, erosionElement);
+    int erosionSize = 3;
+    int dilationSize = 3;
     
-    cv::Mat dilationElement = cv::getStructuringElement(cv::MORPH_ELLIPSE,
-                                                        cv::Size(2 * dilationSize + 1, 2 * dilationSize + 1),
-                                                        cv::Point(dilationSize, dilationSize));
-    
-    // Apply erosion or dilation on the image
-    cv::dilate(thresh, thresh, dilationElement);
-    
-    // Apply erosion or dilation on the image
-    cv::erode(thresh, thresh, erosionElement);
-    
+    ApplyMorphologicalOperation(thresh, erosionSize, dilationSize);
+
     std::vector<cv::KeyPoint> keypoints;
     detector.detect(thresh, keypoints);
     
-
     
     int i = 0, j = 0, k = 0;
     double blobSize = 0, blobSize2 = 0;

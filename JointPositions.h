@@ -19,11 +19,11 @@
 using namespace cv;
 using namespace std;
 
-bool DetermineBasePairs(vector<KeyPoint> &random, vector<KeyPoint> &sorted);
-bool DeterminePairs(vector<KeyPoint> &random, vector<KeyPoint> &sorted, Point pt1, Point pt2);
-void CalculateJoints(vector<Point2f>& pixels, Mat &cameraMatrix1, Mat &cameraMatrix2, Mat &translation);
-void CalculateLinkVector(vector<Point2f> points, vector<Point3f> linkPoints, Mat &cameraMatrix1, Mat &cameraMatrix2, Mat &translation);
-void CalculateJoint(vector<Point3f> link1, vector<Point3f> link2, Point3f &joint, double &angle);
+void ReprojectPoints(Point3f pt, Point2f &pt1, Point2f &pt2, Mat &cameraMatrix1, Mat &cameraMatrix2, Mat &translation);
+void DetermineBasePairs(KeyPoint random[4], KeyPoint sorted[4]);
+void DeterminePairs(KeyPoint random[4], KeyPoint sorted[4], Point pt1, Point pt2);
+//void CalculateLinkVector(vector<Point2f> points, vector<Point3f> linkPoints, Mat &cameraMatrix1, Mat &cameraMatrix2, Mat &translation);
+void CalculateJoint(Point3f link1[2], Point3f link2[2], Point3f &joint, double &angle);
 Point3f Calculate3DPoint(Point2f pixels1, Point2f pixels2, Mat &cameraMatrix1, Mat &cameraMatrix2, Mat &translation);
 double CalculateDisplacement(Point a, Point b);
 double CalculateAngle(Point3f a, Point3f b);

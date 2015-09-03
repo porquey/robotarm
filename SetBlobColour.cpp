@@ -46,28 +46,29 @@ void SetBlobColour(VideoCapture& inputCapture1, VideoCapture& inputCapture2)
 
         setMouseCallback("Src1", MouseCallBack, userData1);
         setMouseCallback("Src2", MouseCallBack, userData2);
+        if(iLowH > iHighH)
+        {
+            Mat temp1, temp2, temp3, temp4;
+            inRange(hsv1, Scalar(0, iLowS, iLowV), Scalar(iHighH, iHighS, iHighV), temp1);
+            inRange(hsv1, Scalar(iLowH, iLowS, iLowV), Scalar(179, iHighS, iHighV), temp2);
+            inRange(hsv2, Scalar(0, iLowS, iLowV), Scalar(iHighH, iHighS, iHighV), temp3);
+            inRange(hsv2, Scalar(iLowH, iLowS, iLowV), Scalar(179, iHighS, iHighV), temp4);
 
-        inRange(hsv1, Scalar(iLowH, iLowS, iLowV), Scalar(iHighH, iHighS, iHighV), thresh1);
-        inRange(hsv2, Scalar(iLowH, iLowS, iLowV), Scalar(iHighH, iHighS, iHighV), thresh2);
-        
+            bitwise_or(temp1, temp2, thresh1);
+            bitwise_or(temp3, temp4, thresh2);
+            
+        }
+        else
+        {
+            inRange(hsv1, Scalar(iLowH, iLowS, iLowV), Scalar(iHighH, iHighS, iHighV), thresh1);
+            inRange(hsv2, Scalar(iLowH, iLowS, iLowV), Scalar(iHighH, iHighS, iHighV), thresh2);
+        }
         thresh1 = 255 - thresh1;
         thresh2 = 255 - thresh2;
 
-        Mat erosionElement = getStructuringElement(cv::MORPH_ELLIPSE,
-                                                   cv::Size(2 * 3 + 1, 2 * 3 + 1),
-                                                   cv::Point(3, 3) );
         
-        // Apply erosion or dilation on the image
-        erode(thresh1, thresh1, erosionElement);
-        erode(thresh2, thresh2, erosionElement);
-        
-        Mat dilationElement = getStructuringElement(cv::MORPH_ELLIPSE,
-                                                    cv::Size(2 * 4 + 1, 2 * 4 + 1),
-                                                    cv::Point(4, 4) );
-        
-        // Apply erosion or dilation on the image
-        dilate(thresh1, thresh1, dilationElement);
-        dilate(thresh2, thresh2, dilationElement);
+        ApplyMorphologicalOperation(thresh1, erosion, dilation);
+        ApplyMorphologicalOperation(thresh2, erosion, dilation);
         
         imshow("Thresh1", thresh1);
         imshow("Thresh2", thresh2);
@@ -77,6 +78,10 @@ void SetBlobColour(VideoCapture& inputCapture1, VideoCapture& inputCapture2)
         if((char)key == 't')
         {
             iHighH += 2;
+            if(iHighH > 179)
+            {
+                iHighH = iHighH - 180;
+            }
             cerr << "H: " << iHighH << " - " << iLowH << endl;
             cerr << "S: " << iHighS << " - " << iLowS << endl;
             cerr << "V: " << iHighV << " - " << iLowV << endl;
@@ -85,6 +90,10 @@ void SetBlobColour(VideoCapture& inputCapture1, VideoCapture& inputCapture2)
         else if((char)key == 'y')
         {
             iLowH += 2;
+            if(iLowH > 179)
+            {
+                iLowH = iLowH - 180;
+            }
             cerr << "H: " << iHighH << " - " << iLowH << endl;
             cerr << "S: " << iHighS << " - " << iLowS << endl;
             cerr << "V: " << iHighV << " - " << iLowV << endl;
@@ -92,6 +101,10 @@ void SetBlobColour(VideoCapture& inputCapture1, VideoCapture& inputCapture2)
         else if((char)key == 'u')
         {
             iHighS += 2;
+            if(iHighS > 255)
+            {
+                iHighS = 255;
+            }
             cerr << "H: " << iHighH << " - " << iLowH << endl;
             cerr << "S: " << iHighS << " - " << iLowS << endl;
             cerr << "V: " << iHighV << " - " << iLowV << endl;
@@ -99,6 +112,10 @@ void SetBlobColour(VideoCapture& inputCapture1, VideoCapture& inputCapture2)
         else if((char)key == 'i')
         {
             iLowS += 2;
+            if(iLowS > 255)
+            {
+                iLowS = 255;
+            }
             cerr << "H: " << iHighH << " - " << iLowH << endl;
             cerr << "S: " << iHighS << " - " << iLowS << endl;
             cerr << "V: " << iHighV << " - " << iLowV << endl;
@@ -106,6 +123,10 @@ void SetBlobColour(VideoCapture& inputCapture1, VideoCapture& inputCapture2)
         else if((char)key == 'o')
         {
             iHighV += 2;
+            if(iHighV > 255)
+            {
+                iHighV = 255;
+            }
             cerr << "H: " << iHighH << " - " << iLowH << endl;
             cerr << "S: " << iHighS << " - " << iLowS << endl;
             cerr << "V: " << iHighV << " - " << iLowV << endl;
@@ -113,12 +134,20 @@ void SetBlobColour(VideoCapture& inputCapture1, VideoCapture& inputCapture2)
         else if((char)key == 'p')
         {
             iLowV += 2;
+            if(iLowV > 255)
+            {
+                iLowV = 255;
+            }
             cerr << "H: " << iHighH << " - " << iLowH << endl;
             cerr << "S: " << iHighS << " - " << iLowS << endl;
             cerr << "V: " << iHighV << " - " << iLowV << endl;
         }else if((char)key == 'g')
         {
             iHighH -= 2;
+            if(iHighH < 0)
+            {
+                iHighH = iHighH + 180;
+            }
             cerr << "H: " << iHighH << " - " << iLowH << endl;
             cerr << "S: " << iHighS << " - " << iLowS << endl;
             cerr << "V: " << iHighV << " - " << iLowV << endl;
@@ -127,6 +156,10 @@ void SetBlobColour(VideoCapture& inputCapture1, VideoCapture& inputCapture2)
         else if((char)key == 'h')
         {
             iLowH -= 2;
+            if(iLowH < 0)
+            {
+                iLowH = iLowH + 180;
+            }
             cerr << "H: " << iHighH << " - " << iLowH << endl;
             cerr << "S: " << iHighS << " - " << iLowS << endl;
             cerr << "V: " << iHighV << " - " << iLowV << endl;
@@ -134,6 +167,10 @@ void SetBlobColour(VideoCapture& inputCapture1, VideoCapture& inputCapture2)
         else if((char)key == 'j')
         {
             iHighS -= 2;
+            if(iHighS < 0)
+            {
+                iHighS = 0;
+            }
             cerr << "H: " << iHighH << " - " << iLowH << endl;
             cerr << "S: " << iHighS << " - " << iLowS << endl;
             cerr << "V: " << iHighV << " - " << iLowV << endl;
@@ -141,6 +178,10 @@ void SetBlobColour(VideoCapture& inputCapture1, VideoCapture& inputCapture2)
         else if((char)key == 'k')
         {
             iLowS -= 2;
+            if(iLowS < 0)
+            {
+                iLowS = 0;
+            }
             cerr << "H: " << iHighH << " - " << iLowH << endl;
             cerr << "S: " << iHighS << " - " << iLowS << endl;
             cerr << "V: " << iHighV << " - " << iLowV << endl;
@@ -148,6 +189,10 @@ void SetBlobColour(VideoCapture& inputCapture1, VideoCapture& inputCapture2)
         else if((char)key == 'l')
         {
             iHighV -= 2;
+            if(iHighV < 0)
+            {
+                iHighV = 0;
+            }
             cerr << "H: " << iHighH << " - " << iLowH << endl;
             cerr << "S: " << iHighS << " - " << iLowS << endl;
             cerr << "V: " << iHighV << " - " << iLowV << endl;
@@ -155,9 +200,40 @@ void SetBlobColour(VideoCapture& inputCapture1, VideoCapture& inputCapture2)
         else if((char)key == ';')
         {
             iLowV -= 2;
+            if(iLowV < 0)
+            {
+                iLowV = 0;
+            }
             cerr << "H: " << iHighH << " - " << iLowH << endl;
             cerr << "S: " << iHighS << " - " << iLowS << endl;
             cerr << "V: " << iHighV << " - " << iLowV << endl;
+        }
+        
+        else if((char)key == '2')
+        {
+            erosion++;
+            cerr << "Erosion: " << erosion << endl;
+        }
+        else if((char)key == '1')
+        {
+            if(erosion != 1)
+            {
+                erosion--;
+            }
+            cerr << "Erosion: " << erosion << endl;
+        }
+        else if((char)key == '4')
+        {
+            dilation++;
+            cerr << "Dilation: " << dilation << endl;
+        }
+        else if((char)key == '3')
+        {
+            if(dilation != 1)
+            {
+                dilation--;
+            }
+            cerr << "Dilation: " << dilation << endl;
         }
         else if((char)key == 's')
         {
@@ -224,4 +300,33 @@ void SetBlobColour(VideoCapture& inputCapture1, VideoCapture& inputCapture2)
         }
 
     }
+}
+
+void ApplyMorphologicalOperation(Mat &img, int erosionSize, int dilationSize)
+{
+    
+    Mat erosionElement = getStructuringElement(cv::MORPH_ELLIPSE, Size(erosionSize, erosionSize), Point(-1, -1));
+    
+    // Apply erosion or dilation on the image
+    
+    Mat dilationElement = getStructuringElement(MORPH_ELLIPSE, Size(dilationSize, dilationSize), Point(-1, -1));
+    
+    Mat erosionElement2 = getStructuringElement(cv::MORPH_ELLIPSE, Size(2 * erosionSize, 2 * erosionSize), Point(-1, -1));
+    
+    // Apply erosion or dilation on the image
+    
+    Mat dilationElement2 = getStructuringElement(MORPH_ELLIPSE, Size(2 * dilationSize, 2 * dilationSize), Point(-1, -1));
+    
+    erode(img, img, erosionElement2);
+    
+    dilate(img, img, dilationElement);
+    
+    erode(img, img, erosionElement);
+
+    // Apply erosion or dilation on the image
+    dilate(img, img, dilationElement);
+    
+    // Apply erosion or dilation on the image
+    //erode(img, img, erosionElement);
+    
 }
