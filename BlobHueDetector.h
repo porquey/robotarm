@@ -18,7 +18,7 @@ public:
     bool GetBlob(cv::Mat &src, cv::KeyPoint &keypoint);
     bool GetStripVectors(cv::Mat &src1, cv::Mat &src2, cv::KeyPoint &begin1, cv::KeyPoint &end1, cv::KeyPoint &begin2, cv::KeyPoint &end2);
     bool GetStrip(cv::Mat &src, cv::KeyPoint &begin, cv::KeyPoint &end, cv::Mat &thresh);
-    bool GetJointPos(std::vector<cv::Mat> &srcVec, std::vector<cv::KeyPoint> &pointVec, std::vector<int> &countVec, vector<KeyPoint> &offsetVec);
+    bool GetJointPos(std::vector<cv::Mat> &srcVec, std::vector<cv::KeyPoint> &pointVec);
     bool GetJointBlob(cv::Mat &src, cv::KeyPoint &point, cv::Mat &thresh);
     
     void SetHSVRanges(const HSVRanges range);
@@ -31,4 +31,8 @@ private:
     cv::KeyPoint last1, last2;
     
     cv::KeyPoint lastBegin1, lastEnd1, lastBegin2, lastEnd2;
+    
+    std::vector<int> countVec;
+    std::vector<cv::KeyPoint> offsetVec;
+    
 };

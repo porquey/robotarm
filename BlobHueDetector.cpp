@@ -16,7 +16,9 @@ last2(),
 lastBegin1(),
 lastEnd1(),
 lastBegin2(),
-lastEnd2()
+lastEnd2(),
+countVec(),
+offsetVec()
 {
     params.minThreshold = 80;
     params.maxThreshold = 150;
@@ -38,9 +40,15 @@ lastEnd2()
     params.filterByInertia = false;
     params.minInertiaRatio = 0.01;
     
-    params.minDistBetweenBlobs = 10;
+    params.minDistBetweenBlobs = 50;
     
     detector = BetterBlobDetector(params);
+    
+    countVec.push_back(5);
+    countVec.push_back(5);
+    
+    offsetVec.push_back(cv::KeyPoint());
+    offsetVec.push_back(cv::KeyPoint());
 }
 
 
@@ -461,7 +469,7 @@ bool BlobHueDetector::GetStrip(cv::Mat &src, cv::KeyPoint &begin, cv::KeyPoint &
     }
 }
 
-bool BlobHueDetector::GetJointPos(std::vector<cv::Mat> &srcVec, std::vector<cv::KeyPoint> &pointVec, std::vector<int> &countVec, vector<KeyPoint> &offsetVec)
+bool BlobHueDetector::GetJointPos(std::vector<cv::Mat> &srcVec, std::vector<cv::KeyPoint> &pointVec)
 {
     cv::Mat thresh;
     cv::Rect roi;
@@ -515,15 +523,15 @@ bool BlobHueDetector::GetJointPos(std::vector<cv::Mat> &srcVec, std::vector<cv::
             roi = cv::Rect(xLeft, yTop, xRight - xLeft + 1, yBottom - yTop + 1);
             cv::Mat roiMat = srcVec[i](roi);
             //imshow("ROI1", roiMat);
-            
-            detectedVec.push_back(GetJointBlob(roiMat, pointVec[i], thresh));
-            pointVec[i].pt.x += roi.x;
-            pointVec[i].pt.y += roi.y;
-            
+            cv::KeyPoint point;
+            detectedVec.push_back(GetJointBlob(roiMat, point, thresh));
+            point.pt.x += roi.x;
+            point.pt.y += roi.y;
+            pointVec.push_back(point);
             if(detectedVec[i])
             {
                 countVec[i] = 0;
-                offsetVec[i] = pointVec[i];
+                offsetVec[i] = point;
             }
             else
             {
@@ -532,11 +540,13 @@ bool BlobHueDetector::GetJointPos(std::vector<cv::Mat> &srcVec, std::vector<cv::
         }
         else
         {
-            detectedVec.push_back(GetJointBlob(srcVec[i], pointVec[i], thresh));
+            cv::KeyPoint point;
+            detectedVec.push_back(GetJointBlob(srcVec[i], point, thresh));
+            pointVec.push_back(point);
             if(detectedVec[i])
             {
                 countVec[i] = 0;
-                offsetVec[i] = pointVec[i];
+                offsetVec[i] = point;
             }
         }
     }
@@ -578,7 +588,7 @@ bool BlobHueDetector::GetJointBlob(cv::Mat &src, cv::KeyPoint &point, cv::Mat &t
     detector.detect(thresh, keypoints);
     
     
-    int i = 0, k = 0;
+    int k = 0;
     double blobSize = 0;
     if(keypoints.size() == 0)
     {
@@ -586,25 +596,52 @@ bool BlobHueDetector::GetJointBlob(cv::Mat &src, cv::KeyPoint &point, cv::Mat &t
     }
     else
     {
-        for(std::vector<cv::KeyPoint>::iterator blobIterator = keypoints.begin(); blobIterator != keypoints.end(); blobIterator++){
+        for(int i = 0; i < keypoints.size(); i++){
             
-            if(blobIterator->size > blobSize)
+            if(keypoints[i].size > blobSize)
             {
-                blobSize = blobIterator->size;
+                blobSize = keypoints[i].size;
                 k = i;
             }
-            i++;
         }
-        //std::vector<cv::KeyPoint> cluster;
-        point = keypoints.at(k);
+        std::vector<cv::KeyPoint> cluster;
         
-        //cluster.push_back(keypoints.at(k));
+        cluster.push_back(keypoints.at(k));
         
-        /*for(std::vector<cv::KeyPoint>::iterator blobIterator = keypoints.begin(); blobIterator != keypoints.end(); blobIterator++)
+        for(int i = 0; i < keypoints.size(); i++)
         {
-            if(blobIterator.pt.x - )
+            if(i == k)
+            {
+                //cerr << "Detection point: " << keypoints[i].pt << endl;
+                //cv::circle(src, keypoints[i].pt, 5, Scalar(255,255,255));
+            }
+            else
+            {
+                double distance = sqrt((keypoints[i].pt.x - keypoints[k].pt.x) * (keypoints[i].pt.x - keypoints[k].pt.x) + (keypoints[i].pt.y - keypoints[k].pt.y) * (keypoints[i].pt.y - keypoints[k].pt.y));
+                //cerr << "Point " << i << " is: " << keypoints[i].pt << " dist: " << distance << endl;
+                //cv::circle(src, keypoints[i].pt, 5, Scalar(0,255,255));
+                if(distance < 60)
+                {
+                    cluster.push_back(keypoints[i]);
+                }
+            }
         
-        }*/
+        }
+        cv::Point2f avg = cv::Point2f(0, 0);
+        double sum = 0;
+
+        for(int i = 0; i < cluster.size(); i++)
+        {
+            avg = avg + cluster[i].pt * cluster[i].size;
+            sum += cluster[i].size;
+        }
+        double denom = 1/sum;
+        avg = avg * denom;
+        //cerr << "Point " << avg << " size " << sum << endl;
+        
+        point = cv::KeyPoint(avg, sum);
+
+        cv::imshow("TH", thresh);
         return true;
     }
 

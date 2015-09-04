@@ -21,8 +21,8 @@
 #define HALF_POINT_X 319.5
 #define HALF_POINT_Y 239.5
 
-#define CAMERA1 1
-#define CAMERA2 2
+#define CAMERA1 0
+#define CAMERA2 0
 
 #define LINK0 15.8
 #define LINK1 20.2
@@ -208,8 +208,6 @@ int main(int argc, char** argv)
         static Point3f link0[2], link1[2], link2[2];
         static KeyPoint random0[4], sorted0[4], random1[4], sorted1[4], random2[4], sorted2[4];
 
-        static vector<vector<int>> counterVec = {5, 5};
-
         
         if(checkBlobs)
         {
@@ -222,15 +220,14 @@ int main(int argc, char** argv)
                 imageVec.push_back(image1);
                 imageVec.push_back(image2);
                 vector<KeyPoint> keypointVec;
-                vector<int> counterVec;
 
-                bool detected = detector[i].GetJointPos(imageVec, keypointVec, counterVec);
+                bool detected = detector[i].GetJointPos(imageVec, keypointVec);
                 
-                Point3f coordTemp = Calculate3DPoint(keypoint1.pt, keypoint2.pt, cameraMatrix1, cameraMatrix2, translation);
+                Point3f coordTemp = Calculate3DPoint(keypointVec[0].pt, keypointVec[1].pt, cameraMatrix1, cameraMatrix2, translation);
                 coords.push_back(coordTemp);
                 detectedVec.push_back(detected);
-                keypointVec1.push_back(keypoint1);
-                keypointVec2.push_back(keypoint2);
+                keypointVec1.push_back(keypointVec[0]);
+                keypointVec2.push_back(keypointVec[1]);
                 
             }
             
@@ -239,29 +236,7 @@ int main(int argc, char** argv)
         }
         else
         {
-            //vector<KeyPoint> beginVec1, beginVec2, endVec1, endVec2;
-            /*for(int i = 0; i < blobNum; i++)
-            {
-                KeyPoint p1, p2, p3, p4;
-                bool detected = detector[i].GetStripVectors(image1, image2, p1, p2, p3, p4);
-                
-                if(detected)
-                {
-                    vector<KeyPoint> random, sorted;
-                    random.push_back(p1);
-                    random.push_back(p2);
-                    random.push_back(p3);
-                    random.push_back(p4);
-                    
-                    DetermineBasePairs(random, sorted);
-                    
-                    beginVec1.push_back(sorted[0]);
-                    endVec1.push_back(sorted[1]);
-                    beginVec2.push_back(sorted[2]);
-                    endVec2.push_back(sorted[3]);
-                }
-                
-            }*/
+
             KeyPoint p1, p2, p3, p4;
             
             dst1 = image1.clone();
@@ -403,10 +378,6 @@ int main(int argc, char** argv)
             angleStr = "JOINT2: " + to_string(angle2);
             putText(dst2, angleStr, Point(5, 15 * 3), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 255, 255));
 
-            /*cv::drawKeypoints(image1, beginVec1, dst1, cv::Scalar(255, 0, 0), cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
-            cv::drawKeypoints(image2, beginVec2, dst2, cv::Scalar(255, 0, 0), cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
-            cv::drawKeypoints(dst1, endVec1, dst1, cv::Scalar(0, 0, 255), cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
-            cv::drawKeypoints(dst2, endVec2, dst2, cv::Scalar(0, 0, 255), cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS);*/
         }
         
         KeyPoint keypoint1, keypoint2;
@@ -433,7 +404,7 @@ int main(int argc, char** argv)
         
         /////CONTROL/////
         Point2f pt1, pt2;
-        Point3f tempTarget = Point3f(10, 50, 10);
+        Point3f tempTarget = Point3f(50, 50, 50);
         ReprojectPoints(tempTarget, pt1, pt2, cameraMatrix1, cameraMatrix2, translation);
         circle(dst1, pt1, 10, Scalar(0, 255, 255));
         circle(dst2, pt2, 10, Scalar(0, 255, 255));
@@ -494,14 +465,14 @@ int main(int argc, char** argv)
             //}
         }
         
-        cerr << "forest is a chump" << endl;
+        //cerr << "forest is a chump" << endl;
 
         
         
         imshow("Camera2", dst2);
         imshow("Camera1", dst1);
         
-        cerr << "WHHAAT" << endl;
+        //cerr << "WHHAAT" << endl;
 
         
         /*
