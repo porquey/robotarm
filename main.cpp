@@ -21,8 +21,8 @@
 #define HALF_POINT_X 319.5
 #define HALF_POINT_Y 239.5
 
-#define CAMERA1 0
-#define CAMERA2 0
+#define CAMERA1 1
+#define CAMERA2 2
 
 #define LINK0 15.8
 #define LINK1 20.2

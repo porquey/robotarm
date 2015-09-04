@@ -40,7 +40,7 @@ offsetVec()
     params.filterByInertia = false;
     params.minInertiaRatio = 0.01;
     
-    params.minDistBetweenBlobs = 50;
+    params.minDistBetweenBlobs = 30;
     
     detector = BetterBlobDetector(params);
     
@@ -618,11 +618,12 @@ bool BlobHueDetector::GetJointBlob(cv::Mat &src, cv::KeyPoint &point, cv::Mat &t
             else
             {
                 double distance = sqrt((keypoints[i].pt.x - keypoints[k].pt.x) * (keypoints[i].pt.x - keypoints[k].pt.x) + (keypoints[i].pt.y - keypoints[k].pt.y) * (keypoints[i].pt.y - keypoints[k].pt.y));
-                //cerr << "Point " << i << " is: " << keypoints[i].pt << " dist: " << distance << endl;
+                cerr << "Point " << i << " is: " << keypoints[i].pt << " dist: " << distance << endl;
                 //cv::circle(src, keypoints[i].pt, 5, Scalar(0,255,255));
                 if(distance < 60)
                 {
                     cluster.push_back(keypoints[i]);
+                    cerr << "pushed" << endl;
                 }
             }
         
