@@ -9,6 +9,8 @@
 # define _CRT_SECURE_NO_WARNINGS
 #endif
 
+#define MAX_ERROR 164
+
 using namespace std;
 using namespace cv;
 
@@ -19,7 +21,7 @@ public:
     {
     public:
         PIDControl();
-        double update(double angle, double dest);
+        int update(double angle, double dest);
         void reset();
         
     private:

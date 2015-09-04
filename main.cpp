@@ -32,7 +32,6 @@
 using namespace cv;
 using namespace std;
 
-
 float fx1, fy1, cx1, cy1, fx2, fy2, cx2, cy2, xTrans, yTrans, zTrans;
 
 double sum1 = 0, sum2 = 0, sum3 = 0;
@@ -40,8 +39,8 @@ int fcount = 0;
 
 int reprojectVal = 0, height = 0;
 
-bool checkBlobs = false;
-
+bool checkBlobs = true;
+bool targetExists = false;
 
 
 
@@ -142,16 +141,26 @@ int main(int argc, char** argv)
         }
         Mat targetData;
         bfs["Target_Data"] >> targetData;
-        HSVRanges targetRanges;
-        targetRanges.lowH = targetData.at<int>(0, 0);
-        targetRanges.highH = targetData.at<int>(0, 1);
-        targetRanges.lowS = targetData.at<int>(1, 0);
-        targetRanges.highS = targetData.at<int>(1, 1);
-        targetRanges.lowV = targetData.at<int>(2, 0);
-        targetRanges.highV = targetData.at<int>(2, 1);
-        
-        targetDetector.SetHSVRanges(targetRanges);
+        if(targetData.data != NULL)
+        {
+            HSVRanges targetRanges;
+            targetRanges.lowH = targetData.at<int>(0, 0);
+            targetRanges.highH = targetData.at<int>(0, 1);
+            targetRanges.lowS = targetData.at<int>(1, 0);
+            targetRanges.highS = targetData.at<int>(1, 1);
+            targetRanges.lowV = targetData.at<int>(2, 0);
+            targetRanges.highV = targetData.at<int>(2, 1);
+            
+            targetDetector.SetHSVRanges(targetRanges);
+            targetExists = true;
+        }
+        else
+        {
+            targetDetector.SetDefaultHSVRanges();
+        }
     }
+    
+
     
     cerr << "Initialising" << endl;
     Mat thresh1, thresh2, dst1, dst2;
@@ -159,6 +168,10 @@ int main(int argc, char** argv)
     clock_t beginTime = clock();;
     //int frames = 0;
     ControlArm control(LINK0, LINK1, LINK2);
+    ControlArm::PIDControl pid0 = ControlArm::PIDControl();
+    ControlArm::PIDControl pid1 = ControlArm::PIDControl();
+    ControlArm::PIDControl pid2 = ControlArm::PIDControl();
+    double destAngle = INTMAX_MAX;
 
     while(inputCapture1.isOpened() && inputCapture2.isOpened())
     {
@@ -195,6 +208,8 @@ int main(int argc, char** argv)
         static Point3f link0[2], link1[2], link2[2];
         static KeyPoint random0[4], sorted0[4], random1[4], sorted1[4], random2[4], sorted2[4];
 
+        static vector<vector<int>> counterVec = {5, 5};
+
         
         if(checkBlobs)
         {
@@ -203,7 +218,13 @@ int main(int argc, char** argv)
             for(int i = 0; i < blobNum; i++)
             {
                 KeyPoint keypoint1, keypoint2;
-                bool detected = detector[i].GetBlobCentres(image1, image2, keypoint1, keypoint2);
+                vector<Mat> imageVec;
+                imageVec.push_back(image1);
+                imageVec.push_back(image2);
+                vector<KeyPoint> keypointVec;
+                vector<int> counterVec;
+
+                bool detected = detector[i].GetJointPos(imageVec, keypointVec, counterVec);
                 
                 Point3f coordTemp = Calculate3DPoint(keypoint1.pt, keypoint2.pt, cameraMatrix1, cameraMatrix2, translation);
                 coords.push_back(coordTemp);
@@ -218,7 +239,7 @@ int main(int argc, char** argv)
         }
         else
         {
-            vector<KeyPoint> beginVec1, beginVec2, endVec1, endVec2;
+            //vector<KeyPoint> beginVec1, beginVec2, endVec1, endVec2;
             /*for(int i = 0; i < blobNum; i++)
             {
                 KeyPoint p1, p2, p3, p4;
@@ -389,51 +410,35 @@ int main(int argc, char** argv)
         }
         
         KeyPoint keypoint1, keypoint2;
-        targetDetector.GetBlobCentres(image1, image2, keypoint1, keypoint2);
-        
-        Point3f targetCoord = Calculate3DPoint(keypoint1.pt, keypoint2.pt, cameraMatrix1, cameraMatrix2, translation);
-        
-        
-        circle(dst1, keypoint1.pt, 5, Scalar(0, 255, 255));
-        circle(dst2, keypoint2.pt, 5, Scalar(0, 255, 255));
-        
-        /*vector<KeyPoint> targetVec1;
-        vector<KeyPoint> targetVec2;
-        
-        targetVec1.push_back(keypoint1);
-        targetVec2.push_back(keypoint2);
-        
-        cv::drawKeypoints(dst1, targetVec1, dst1, cv::Scalar(255,0,255), cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
-        cv::drawKeypoints(dst2, targetVec2, dst2, cv::Scalar(255,0,255), cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
-        */
-        
+        if(targetExists)
+        {
+            targetDetector.GetBlobCentres(image1, image2, keypoint1, keypoint2);
+            
+            Point3f targetCoord = Calculate3DPoint(keypoint1.pt, keypoint2.pt, cameraMatrix1, cameraMatrix2, translation);
+            
+            circle(dst1, keypoint1.pt, 5, Scalar(0, 255, 255));
+            circle(dst2, keypoint2.pt, 5, Scalar(0, 255, 255));
+            string posStr = "X: " + to_string(targetCoord.x) + "  Y: " + to_string(targetCoord.y) + "  Z: " + to_string(targetCoord.z);
+            putText(dst1, posStr, Point(5, 15 * 4), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 255, 255));
+            
+            
+        }
+   
         //cerr << "Blob detection: " << float(clock() - beginTime)/CLOCKS_PER_SEC << endl;
         sum2 += float(clock() - beginTime)/CLOCKS_PER_SEC;
         beginTime = clock();
         
         
-        /*for(int i = 0; i < detectedVec.size(); i++)
-        {
-            string posStr;
-            if(!detectedVec[i])
-            {
-                posStr = "X: " + to_string(0.00000000) + "  Y: " + to_string(0.00000000) + "  Z: " + to_string(0.00000000);
-            }
-            else
-            {
-                posStr = "X: " + to_string(coords[i].x) + "  Y: " + to_string(coords[i].y) + "  Z: " + to_string(coords[i].z);
-            }
-            
-            putText(dst1, posStr, Point(5, 15 * (i + 1)), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 255, 255));
-        }*/
-        
-        string posStr = "X: " + to_string(targetCoord.x) + "  Y: " + to_string(targetCoord.y) + "  Z: " + to_string(targetCoord.z);
-        putText(dst1, posStr, Point(5, 15 * 4), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 255, 255));
-        
+ 
         
         /////CONTROL/////
+        Point2f pt1, pt2;
+        Point3f tempTarget = Point3f(10, 50, 10);
+        ReprojectPoints(tempTarget, pt1, pt2, cameraMatrix1, cameraMatrix2, translation);
+        circle(dst1, pt1, 10, Scalar(0, 255, 255));
+        circle(dst2, pt2, 10, Scalar(0, 255, 255));
         
-        
+
         vector<Point3f> joints;
         joints.push_back(base);
         joints.push_back(joint1);
@@ -441,7 +446,7 @@ int main(int argc, char** argv)
         joints.push_back(tip);
         //cerr << base << " " << joint1 << " " << joint2 << " " << tip << endl;
         control.SetArmPose(joints);
-        control.SetTarget(targetCoord);
+        control.SetTarget(tempTarget);
         static double currAngles[3];
         control.GetCurrentPose(currAngles);
         
@@ -461,16 +466,17 @@ int main(int argc, char** argv)
         putText(dst2, angleStr, Point(5, 15 * 5), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 255));
         angleStr = "SET2: " + to_string(angles[2]);
         putText(dst2, angleStr, Point(5, 15 * 6), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 255));
-        
-        
-        
-        
-        
-        
-        
-        
-        
+//        
+//        if (destAngle != INTMAX_MAX)
+//        {
+//            control.SendJointActuators(0, (pid1.update(0, destAngle)), 0);
+//        }
+//        else{
+//            control.SendJointActuators(0, 0, 0);
+//            pid1.reset();
+//        }
         ///////
+        //cerr << "sent" << endl;
         
         
         Point2f point1;
@@ -488,9 +494,15 @@ int main(int argc, char** argv)
             //}
         }
         
+        cerr << "forest is a chump" << endl;
+
+        
         
         imshow("Camera2", dst2);
         imshow("Camera1", dst1);
+        
+        cerr << "WHHAAT" << endl;
+
         
         /*
         
@@ -499,27 +511,6 @@ int main(int argc, char** argv)
         */
         
         char ch = waitKey(15);
-        if(ch == 'k')
-        {
-            if(coords.size() > 2)
-            {
-                Point3f base = coords[0];
-                
-                base.y -= 100;
-                
-                coords.insert(coords.begin(), base);
-                control.SetArmPose(coords);
-                control.CalculateLinkLengths();
-                
-                double currAngles[3];
-                control.GetCurrentPose(currAngles);
-                
-                control.SetTarget(targetCoord);
-                
-                double angles[3];
-                control.GetArmPose(angles);
-            }
-        }
         if(ch == 'e')
         {
             CalibrateEnvironment(inputCapture1, inputCapture2);
@@ -567,15 +558,22 @@ int main(int argc, char** argv)
                 
                 Mat targetData;
                 bfs["Target_Data"] >> targetData;
-                HSVRanges targetRanges;
-                targetRanges.lowH = targetData.at<int>(0, 0);
-                targetRanges.highH = targetData.at<int>(0, 1);
-                targetRanges.lowS = targetData.at<int>(1, 0);
-                targetRanges.highS = targetData.at<int>(1, 1);
-                targetRanges.lowV = targetData.at<int>(2, 0);
-                targetRanges.highV = targetData.at<int>(2, 1);
-                
-                targetDetector.SetHSVRanges(targetRanges);
+                if(targetData.data != NULL)
+                {
+                    HSVRanges targetRanges;
+                    targetRanges.lowH = targetData.at<int>(0, 0);
+                    targetRanges.highH = targetData.at<int>(0, 1);
+                    targetRanges.lowS = targetData.at<int>(1, 0);
+                    targetRanges.highS = targetData.at<int>(1, 1);
+                    targetRanges.lowV = targetData.at<int>(2, 0);
+                    targetRanges.highV = targetData.at<int>(2, 1);
+                    
+                    targetDetector.SetHSVRanges(targetRanges);
+                }
+                else
+                {
+                    targetDetector.SetDefaultHSVRanges();
+                }
             }
             destroyAllWindows();
         }
@@ -611,6 +609,17 @@ int main(int argc, char** argv)
         {
             return 0;
         }
+        else if(ch == 'a')
+        {
+            //cin >> destAngle;
+            control.SendJointActuators(0, 0, 0);
+        }
+        else if(ch == 'b')
+        {
+            //cin >> destAngle;
+            control.SendJointActuators(0, 0, 0);
+        }
+        
 
 
         //cerr << "Draw on image: " << float(clock() - beginTime)/CLOCKS_PER_SEC << endl;

@@ -154,12 +154,12 @@ void CalibrateEnvironment(VideoCapture& inputCapture1, VideoCapture& inputCaptur
         char c = waitKey(15);
         if (c == 'c')
         {
-            printf("Cancelling...\n");
+            cerr << "Cancelling..." << endl;
             return;
         }
         else if(c == 's' && rotationCalibrated)
         {
-            printf("Saving...\n");
+            cerr << "Saving..." << endl;
             const string fileName = "EnvironmentCalibration.xml";
             FileStorage fs(fileName, FileStorage::WRITE);
             fs << "Camera_Matrix_1" <<  getOptimalNewCameraMatrix(cameraMatrix1, distCoeffs1, imageSize, 1,imageSize, 0);
@@ -169,6 +169,7 @@ void CalibrateEnvironment(VideoCapture& inputCapture1, VideoCapture& inputCaptur
             fs << "Mapping_X_2" << mapX2;
             fs << "Mapping_Y_2" << mapY2;
             fs << "Translation" << translation;
+            destroyAllWindows();
             return;
         }
         else if (c == 'r')

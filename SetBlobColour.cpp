@@ -237,7 +237,7 @@ void SetBlobColour(VideoCapture& inputCapture1, VideoCapture& inputCapture2)
         }
         else if((char)key == 's')
         {
-            printf("Saving...\n");
+            cerr << "Saving..." << endl;
             HSVRanges ranges;
 
             ranges.lowH = iLowH;
@@ -258,7 +258,7 @@ void SetBlobColour(VideoCapture& inputCapture1, VideoCapture& inputCapture2)
         }
         else if((char)key == 'a')
         {
-            printf("Target saved...\n");
+            cerr << "Target saved..." << endl;
             
             target.lowH = iLowH;
             target.highH = iHighH;
@@ -276,7 +276,7 @@ void SetBlobColour(VideoCapture& inputCapture1, VideoCapture& inputCapture2)
         }
         else if((char)key == 'd')
         {
-            printf("Done...\n");
+            cout << "Done..." << endl;
             const string fileName = "BlobHSVColour.xml";
             FileStorage fs(fileName, FileStorage::WRITE);
             
@@ -295,7 +295,7 @@ void SetBlobColour(VideoCapture& inputCapture1, VideoCapture& inputCapture2)
         }
         else if((char)key == 'c')
         {
-            printf("Cancelling...\n");
+            cout << "Cancelling..." << endl;
             return;
         }
 

@@ -15,20 +15,27 @@ ControlArm::PIDControl::PIDControl()
 {
     integral = 0;
     lastError = 0;
-    Kp=0;
+    Kp=100;
     Ki=0;
     Kd=0;
 }
 
-double ControlArm::PIDControl::update(double value, double dest)
+int ControlArm::PIDControl::update(double value, double dest)
 {
-    double error = value - dest;
+    double error = (value - dest);
     double derivative = error - lastError;
     
     lastError = error;
-    integral += error;
     
-    return error * Kp + integral * Ki + derivative + Kd;
+    double out = (error * Kp + integral * Ki + derivative + Kd + 0.5);
+        
+    if (out > MAX_ERROR){
+        return (int)MAX_ERROR;
+    }
+    else{
+        integral+= error;
+        return (int)out;
+    }
 }
 
 void ControlArm::PIDControl::reset()
@@ -119,7 +126,7 @@ void ControlArm::UpdateArmPose(Point3f detected)
 }
 
 void ControlArm::SendJointActuators(int diff0, int diff1, int diff2){
-    printf("%d %d %d\n",diff0,diff1,diff2);
+    cout << diff0 << " " << diff1 << " " << diff2 << endl;
 }
 
 void ControlArm::FindInverseKinematics()

@@ -38,6 +38,8 @@ lastEnd2()
     params.filterByInertia = false;
     params.minInertiaRatio = 0.01;
     
+    params.minDistBetweenBlobs = 10;
+    
     detector = BetterBlobDetector(params);
 }
 
@@ -459,4 +461,153 @@ bool BlobHueDetector::GetStrip(cv::Mat &src, cv::KeyPoint &begin, cv::KeyPoint &
     }
 }
 
+bool BlobHueDetector::GetJointPos(std::vector<cv::Mat> &srcVec, std::vector<cv::KeyPoint> &pointVec, std::vector<int> &countVec, vector<KeyPoint> &offsetVec)
+{
+    cv::Mat thresh;
+    cv::Rect roi;
+    const int margin = 75;
+    std::vector<bool> detectedVec;
+    for(int i = 0; i < srcVec.size(); i++)
+    {
+        if(countVec[i] < 5)
+        {
+            int xLeft = offsetVec[i].pt.x - margin;
+            int xRight = offsetVec[i].pt.x + margin;
+            int yTop = offsetVec[i].pt.y - margin;
+            int yBottom = offsetVec[i].pt.y + margin;
+            
+            if(xLeft > offsetVec[i].pt.x - margin)
+            {
+                xLeft = offsetVec[i].pt.x - margin;
+            }
+            if(xLeft < 0)
+            {
+                xLeft = 0;
+            }
+            
+            if(xRight < offsetVec[i].pt.x + margin)
+            {
+                xRight = offsetVec[i].pt.x + margin;
+            }
+            if(xRight > srcVec[i].cols - 1)
+            {
+                xRight = srcVec[i].cols - 1;
+            }
+            
+            if(yTop > offsetVec[i].pt.y - margin)
+            {
+                yTop = offsetVec[i].pt.y - margin;
+            }
+            if(yTop < 0)
+            {
+                yTop = 0;
+            }
+            
+            if(yBottom < offsetVec[i].pt.y + margin)
+            {
+                yBottom = offsetVec[i].pt.y + margin;
+            }
+            if(yBottom > srcVec[i].rows - 1)
+            {
+                yBottom = srcVec[i].rows - 1;
+            }
+            
+            roi = cv::Rect(xLeft, yTop, xRight - xLeft + 1, yBottom - yTop + 1);
+            cv::Mat roiMat = srcVec[i](roi);
+            //imshow("ROI1", roiMat);
+            
+            detectedVec.push_back(GetJointBlob(roiMat, pointVec[i], thresh));
+            pointVec[i].pt.x += roi.x;
+            pointVec[i].pt.y += roi.y;
+            
+            if(detectedVec[i])
+            {
+                countVec[i] = 0;
+                offsetVec[i] = pointVec[i];
+            }
+            else
+            {
+                countVec[i]++;
+            }
+        }
+        else
+        {
+            detectedVec.push_back(GetJointBlob(srcVec[i], pointVec[i], thresh));
+            if(detectedVec[i])
+            {
+                countVec[i] = 0;
+                offsetVec[i] = pointVec[i];
+            }
+        }
+    }
+    
+    if(detectedVec.size() < 2)
+    {
+        return false;
+    }
+    else
+    {
+        return detectedVec[0] && detectedVec[1];
+    }
+}
+
+bool BlobHueDetector::GetJointBlob(cv::Mat &src, cv::KeyPoint &point, cv::Mat &thresh)
+{
+    cv::Mat hsv;
+    cv::cvtColor(src, hsv, CV_BGR2HSV);
+    
+    if(iLowH > iHighH)
+    {
+        Mat temp1, temp2;
+        inRange(hsv, Scalar(0, iLowS, iLowV), Scalar(iHighH, iHighS, iHighV), temp1);
+        inRange(hsv, Scalar(iLowH, iLowS, iLowV), Scalar(179, iHighS, iHighV), temp2);
+        
+        bitwise_or(temp1, temp2, thresh);
+    }
+    else
+    {
+        inRange(hsv, Scalar(iLowH, iLowS, iLowV), Scalar(iHighH, iHighS, iHighV), thresh);
+    }    thresh = 255 - thresh;
+    
+    int erosionSize = 3;
+    int dilationSize = 3;
+    
+    ApplyMorphologicalOperation(thresh, erosionSize, dilationSize);
+    
+    std::vector<cv::KeyPoint> keypoints;
+    detector.detect(thresh, keypoints);
+    
+    
+    int i = 0, k = 0;
+    double blobSize = 0;
+    if(keypoints.size() == 0)
+    {
+        return false;
+    }
+    else
+    {
+        for(std::vector<cv::KeyPoint>::iterator blobIterator = keypoints.begin(); blobIterator != keypoints.end(); blobIterator++){
+            
+            if(blobIterator->size > blobSize)
+            {
+                blobSize = blobIterator->size;
+                k = i;
+            }
+            i++;
+        }
+        //std::vector<cv::KeyPoint> cluster;
+        point = keypoints.at(k);
+        
+        //cluster.push_back(keypoints.at(k));
+        
+        /*for(std::vector<cv::KeyPoint>::iterator blobIterator = keypoints.begin(); blobIterator != keypoints.end(); blobIterator++)
+        {
+            if(blobIterator.pt.x - )
+        
+        }*/
+        return true;
+    }
+
+    
+}
 
