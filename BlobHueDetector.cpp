@@ -408,8 +408,8 @@ bool BlobHueDetector::GetStripVectors(cv::Mat &src1, cv::Mat &src2, cv::KeyPoint
         begin2 = lastBegin2;
         end2 = lastEnd2;
     }
-    imshow("Thresh1", thresh1);
-    imshow("Thresh2", thresh2);
+    //imshow("Thresh1", thresh1);
+    //imshow("Thresh2", thresh2);
     return detected1 && detected2;
 }
 

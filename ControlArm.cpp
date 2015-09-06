@@ -176,15 +176,20 @@ void ControlArm::SetTarget(Point3f target)
         Point3f pointDiff = targetPosition - jointPositions[1];
         double absDiff = CalculateLength(pointDiff);
         
-        targetPosition.x = (int)(pointDiff.x / absDiff) * (link1 + link2);
-        targetPosition.y = (int)(pointDiff.y / absDiff) * (link1 + link2);
-        targetPosition.z = (int)(pointDiff.z / absDiff) * (link1 + link2);
+        targetPosition.x = (int)(pointDiff.x / absDiff) * (link1 + link2 - 1);
+        targetPosition.y = (int)(pointDiff.y / absDiff) * (link1 + link2 - 1);
+        targetPosition.z = (int)(pointDiff.z / absDiff) * (link1 + link2 - 1);
         targetPosition = targetPosition + jointPositions[1];
         
         //cerr << "OUT OF REACH. NEW TARGET: " << targetPosition.x << " " << targetPosition.y << " " << targetPosition.z << endl;
     }
     FindInverseKinematics();
     //cerr << "NEW ANGLE0: " << jointAngles[0] << " ANGLE1: " << jointAngles[1] << " ANGLE2: " << jointAngles[2] << endl;
+}
+
+Point3f ControlArm::GetTarget()
+{
+    return targetPosition;
 }
 
 bool ControlArm::UpdateArmPose(Point3f detected)
@@ -217,6 +222,11 @@ void ControlArm::IncrementIteration()
 
 void ControlArm::SendJointActuators(int diff0, int diff1, int diff2){
     cout << diff0 << " " << diff1 << " " << diff2 << endl;
+}
+
+double ControlArm::GetError()
+{
+    return CalculateLength(CalculateVector(targetPosition, jointPositions[3]));
 }
 
 void ControlArm::FindInverseKinematics()

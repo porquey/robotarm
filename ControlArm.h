@@ -60,8 +60,10 @@ public:
     void GetCurrentPose(double *angles);
     void SendJointActuators(int diff0, int diff1, int diff2);
     void SetTarget(Point3f target);
+    Point3f GetTarget();
     bool UpdateArmPose(Point3f detected);
     void IncrementIteration();
+    double GetError();
     void InitFuzzyController();
     
 protected:

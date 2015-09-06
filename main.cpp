@@ -41,7 +41,7 @@ float fx1, fy1, cx1, cy1, fx2, fy2, cx2, cy2, xTrans, yTrans, zTrans;
 double sum1 = 0, sum2 = 0, sum3 = 0;
 int fcount = 0;
 
-int reprojectVal = 0, yOff = 0;
+int reprojectVal = 0, yOff = 0, xOff = 0, zOff = 0;
 
 bool checkBlobs = true;
 bool targetExists = false;
@@ -427,17 +427,21 @@ int main(int argc, char** argv)
         
         
         double yOffset = yOff * 100;
+        double xOffset = xOff * 100;
+        double zOffset = zOff * 100;
         int j = reprojectVal;
         
         
         /////CONTROL/////
         Point2f pt1, pt2;
-        Point3f tempTarget = Point3f(-200, yOffset, j * 100 - 300);
+        Point3f tempTarget = Point3f(xOffset, yOffset, zOffset);
         ReprojectPoints(tempTarget, pt1, pt2, cameraMatrix1, cameraMatrix2, translation);
         circle(dst1, pt1, 10, Scalar(0, 0, 255));
         circle(dst2, pt2, 10, Scalar(0, 0, 255));
-        string posStr = "TARGET " + to_string(tempTarget.x) + "  Y: " + to_string(tempTarget.y) + "  Z: " + to_string(tempTarget.z);
-        putText(dst1, posStr, Point(5, 15 * 4), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 255));
+        string posStr = "TARGET X: " + to_string(tempTarget.x) + "  Y: " + to_string(tempTarget.y) + "  Z: " + to_string(tempTarget.z);
+        putText(dst1, posStr, Point(5, 15 * 1), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 255));
+        posStr = "END EFFECTOR X: " + to_string(coords[3].x) + "  Y: " + to_string(coords[3].y) + "  Z: " + to_string(coords[3].z);
+        putText(dst1, posStr, Point(5, 15 * 2), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 255));
         //cerr << base << " " << joint1 << " " << joint2 << " " << tip << endl;
         control.SetArmPose(coords);
         control.SetTarget(tempTarget);
@@ -480,27 +484,54 @@ int main(int argc, char** argv)
             cerr << "COULD NOT DETECT" << endl;
         }
         
-        record.writeValue(currAngles[0], destAngle, clock());
+        record.writeValue(control.GetError(), destAngle, clock());
         
       
         Point3f basej = coords[1];
         
-        double height = l1 * sin(HALF_PI - angles[1]);
-        double width = l1 * cos(HALF_PI - angles[1]);
+        Point3f tempTemp = control.GetTarget();
         
-        Point3f jj1 = Point3f(sin(angles[0]) * width + basej.x, height + basej.y, basej.z - cos(angles[0]) * width);
+        double tempAngle0, tempAngle1, tempAngle2;
+        if(tempTemp.z > coords[1].z)
+        {
+            tempAngle0 = angles[0] - PI;
+            
+            if(tempAngle0 > PI)
+            {
+                tempAngle0 -= 2 * PI;
+            }
+            else if(tempAngle0 < PI)
+            {
+                tempAngle0 += 2 * PI;
+            }
+            tempAngle1 = -angles[1];
+            tempAngle2 = -angles[2];
+        }
+        else
+        {
+            tempAngle0 = angles[0];
+            tempAngle1 = angles[1];
+            tempAngle2 = angles[2];
+        }
+        
+        
+        double height = l1 * sin(HALF_PI - tempAngle1);
+        double width = l1 * cos(HALF_PI - tempAngle1);
+        
+        Point3f jj1 = Point3f(sin(tempAngle0) * width + basej.x, height + basej.y, basej.z - cos(tempAngle0) * width);
         Draw3DPoint(basej, dst1, dst2);
         Draw3DPoint(jj1, dst1, dst2);
         Draw3DLine(basej, jj1, dst1, dst2);
         Draw3DLine(basej, coords[0], dst1, dst2);
 
-        Point3f baseVec = tempTarget - coords[0];
+        Point3f baseVec = tempTemp - coords[0];
         baseVec.y = 0;
-        int d = FindAngleDirection(baseVec, coords[1] - coords[2], tempTarget - coords[2]);
         
-        double extraHeight = l2 * sin(HALF_PI - angles[1] + angles[2] * d);
-        double extraWidth = l2 * cos(HALF_PI - angles[1] + angles[2] * d);
-        Point3f jj2 = Point3f(jj1.x + sin(angles[0]) * extraWidth, jj1.y + extraHeight, jj1.z - cos(angles[0]) * extraWidth);
+        int d = FindAngleDirection(baseVec, coords[1] - coords[2], tempTemp - coords[2]);
+        
+        double extraHeight = l2 * sin(HALF_PI - tempAngle1 + tempAngle2 * d);
+        double extraWidth = l2 * cos(HALF_PI - tempAngle1 + tempAngle2 * d);
+        Point3f jj2 = Point3f(jj1.x + sin(tempAngle0) * extraWidth, jj1.y + extraHeight, jj1.z - cos(tempAngle0) * extraWidth);
         Draw3DPoint(jj2, dst1, dst2);
         Draw3DLine(jj1, jj2, dst1, dst2);
         
@@ -615,41 +646,100 @@ int main(int argc, char** argv)
             }
             destroyAllWindows();
         }
+        else if(ch == 'f')
+        {
+            //control.UpdateArm
+        }
         else if(ch == '1')
         {
-            reprojectVal = 0;
+            pid1.reset();
+            pid0.reset();
+            pid2.reset();
+            xOff = 0;
+            yOff = 0;
+            zOff = 0;
         }
         else if(ch == '2')
         {
-            reprojectVal = 1;
+            pid1.reset();
+            pid0.reset();
+            pid2.reset();
+            xOff = -2;
+            yOff = -1;
+            zOff = -2;
         }
         else if(ch == '3')
         {
-            reprojectVal = 2;
+            pid1.reset();
+            pid0.reset();
+            pid2.reset();
+            xOff = 0;
+            yOff = -2;
+            zOff = -3;
         }
         else if(ch == '4')
         {
-            reprojectVal = 3;
+            pid1.reset();
+            pid0.reset();
+            pid2.reset();
+            xOff = -2;
+            yOff = -2;
+            zOff = -2;
         }
         else if(ch == '5')
         {
-            reprojectVal = 4;
+            pid1.reset();
+            pid0.reset();
+            pid2.reset();
+            xOff = -1;
+            yOff = -2;
+            zOff = 3;
         }
         else if(ch == '6')
         {
-            reprojectVal = 5;
+            pid1.reset();
+            pid0.reset();
+            pid2.reset();
+            xOff = -1;
+            yOff = -2;
+            zOff = -2;
         }
+        
         else if(ch == '7')
         {
-            reprojectVal = 5;
+            pid1.reset();
+            pid0.reset();
+            pid2.reset();
+            xOff = -1;
+            yOff = -2;
+            zOff = -3;
         }
-        else if(ch == '-')
+        else if(ch == '8')
         {
-            yOff++;
+            pid1.reset();
+            pid0.reset();
+            pid2.reset();
+            xOff = -2;
+            yOff = -1;
+            zOff = 2;
         }
-        else if(ch == '=')
+        else if(ch == '9')
         {
-            yOff--;
+            pid1.reset();
+            pid0.reset();
+            pid2.reset();
+            xOff = 3;
+            yOff = 0;
+            zOff = 2;
+        }
+        else if(ch == '0')
+        {
+            pid1.reset();
+            pid0.reset();
+            pid2.reset();
+            xOff = 3;
+            yOff = -3;
+            zOff = 2;
         }
         else if((int)ch == 27)
         {
@@ -677,10 +767,11 @@ int main(int argc, char** argv)
         }
         else if (ch == 's')
         {
-            destAngle = 1;
             PIDEnabled = true;
             pid1.reset();
-            record.start("test.txt");
+            pid0.reset();
+            pid2.reset();
+            record.start("inversekinematics.txt");
         }
         
         fcount++;
