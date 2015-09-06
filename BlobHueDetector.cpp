@@ -21,26 +21,28 @@ countVec(),
 offsetVec()
 {
     params.minThreshold = 80;
-    params.maxThreshold = 150;
+    params.maxThreshold = 110;
     
     // Filter by Area.
     params.filterByArea = true;
     params.minArea = 100;
-    params.maxArea = 10000;
+    params.maxArea = 15000;
     
     // Filter by Circularity
     params.filterByCircularity = false;
-    params.minCircularity = 0.2;
+    //params.minCircularity = 0.2;
     
     // Filter by Convexity
     params.filterByConvexity = false;
-    params.minConvexity = 0.84;
+    //params.minConvexity = 0.84;
     
     // Filter by Inertia
     params.filterByInertia = false;
-    params.minInertiaRatio = 0.01;
+    //params.minInertiaRatio = 0.01;
     
-    params.minDistBetweenBlobs = 30;
+    params.filterByColor = false;
+    
+    params.minDistBetweenBlobs = 40;
     
     detector = BetterBlobDetector(params);
     
@@ -484,47 +486,29 @@ bool BlobHueDetector::GetJointPos(std::vector<cv::Mat> &srcVec, std::vector<cv::
             int yTop = offsetVec[i].pt.y - margin;
             int yBottom = offsetVec[i].pt.y + margin;
             
-            if(xLeft > offsetVec[i].pt.x - margin)
-            {
-                xLeft = offsetVec[i].pt.x - margin;
-            }
+            
             if(xLeft < 0)
             {
                 xLeft = 0;
-            }
-            
-            if(xRight < offsetVec[i].pt.x + margin)
-            {
-                xRight = offsetVec[i].pt.x + margin;
             }
             if(xRight > srcVec[i].cols - 1)
             {
                 xRight = srcVec[i].cols - 1;
             }
-            
-            if(yTop > offsetVec[i].pt.y - margin)
-            {
-                yTop = offsetVec[i].pt.y - margin;
-            }
             if(yTop < 0)
             {
                 yTop = 0;
-            }
-            
-            if(yBottom < offsetVec[i].pt.y + margin)
-            {
-                yBottom = offsetVec[i].pt.y + margin;
             }
             if(yBottom > srcVec[i].rows - 1)
             {
                 yBottom = srcVec[i].rows - 1;
             }
-            
             roi = cv::Rect(xLeft, yTop, xRight - xLeft + 1, yBottom - yTop + 1);
             cv::Mat roiMat = srcVec[i](roi);
             //imshow("ROI1", roiMat);
             cv::KeyPoint point;
             detectedVec.push_back(GetJointBlob(roiMat, point, thresh));
+            
             point.pt.x += roi.x;
             point.pt.y += roi.y;
             pointVec.push_back(point);
@@ -549,6 +533,8 @@ bool BlobHueDetector::GetJointPos(std::vector<cv::Mat> &srcVec, std::vector<cv::
                 offsetVec[i] = point;
             }
         }
+        cv::imshow(std::string(std::to_string(i) + "TH"), thresh);
+
     }
     
     if(detectedVec.size() < 2)
@@ -618,12 +604,12 @@ bool BlobHueDetector::GetJointBlob(cv::Mat &src, cv::KeyPoint &point, cv::Mat &t
             else
             {
                 double distance = sqrt((keypoints[i].pt.x - keypoints[k].pt.x) * (keypoints[i].pt.x - keypoints[k].pt.x) + (keypoints[i].pt.y - keypoints[k].pt.y) * (keypoints[i].pt.y - keypoints[k].pt.y));
-                cerr << "Point " << i << " is: " << keypoints[i].pt << " dist: " << distance << endl;
+                //cerr << "Point " << i << " is: " << keypoints[i].pt << " dist: " << distance << endl;
                 //cv::circle(src, keypoints[i].pt, 5, Scalar(0,255,255));
                 if(distance < 60)
                 {
                     cluster.push_back(keypoints[i]);
-                    cerr << "pushed" << endl;
+                    //cerr << "pushed" << endl;
                 }
             }
         
@@ -642,7 +628,6 @@ bool BlobHueDetector::GetJointBlob(cv::Mat &src, cv::KeyPoint &point, cv::Mat &t
         
         point = cv::KeyPoint(avg, sum);
 
-        cv::imshow("TH", thresh);
         return true;
     }
 

@@ -252,31 +252,31 @@ void CalibrateEnvironment(VideoCapture& inputCapture1, VideoCapture& inputCaptur
                 imagePoints1.clear();
                 imagePoints2.clear();
                 
-                if (RetrieveChessboardCorners(s, imagePoints1, imagePoints2, inputCapture1, inputCapture2, ITERATIONS,1, mapX1, mapY1, mapX2, mapY2)){
-                    
-                    temp1.release();
-                    temp2.release();
-                    R.release();
-                    T.release();
-                    E.release();
-                    F.release();
-                    
-                    stereoCalibrate(objectPoints, imagePoints1, imagePoints2, cameraMatrix1, temp1, cameraMatrix2, temp2, imageSize, R, T, E, F,
-                                    TermCriteria( CV_TERMCRIT_EPS+CV_TERMCRIT_ITER, 1000, 0.01),
-                                    CV_CALIB_FIX_INTRINSIC);
-                    
-                    cerr << "Reprojection error reported by camera: " << rms << endl;
-                    
-                    Rodrigues(R, rvec);
-                    cerr << "Adjusted rvec: " << rvec << endl;
-                    
-                    cerr << "Translation check: " << T << endl;
-                    
-                    cerr << "big success" << endl;
-                    
-                    temp1.release();
-                    temp2.release();
-                }
+//                if (RetrieveChessboardCorners(s, imagePoints1, imagePoints2, inputCapture1, inputCapture2, ITERATIONS,1, mapX1, mapY1, mapX2, mapY2)){
+//                    
+//                    temp1.release();
+//                    temp2.release();
+//                    R.release();
+//                    T.release();
+//                    E.release();
+//                    F.release();
+//                    
+//                    stereoCalibrate(objectPoints, imagePoints1, imagePoints2, cameraMatrix1, temp1, cameraMatrix2, temp2, imageSize, R, T, E, F,
+//                                    TermCriteria( CV_TERMCRIT_EPS+CV_TERMCRIT_ITER, 1000, 0.01),
+//                                    CV_CALIB_FIX_INTRINSIC);
+//                    
+//                    cerr << "Reprojection error reported by camera: " << rms << endl;
+//                    
+//                    Rodrigues(R, rvec);
+//                    cerr << "Adjusted rvec: " << rvec << endl;
+//                    
+//                    cerr << "Translation check: " << T << endl;
+//                    
+//                    cerr << "big success" << endl;
+//                    
+//                    temp1.release();
+//                    temp2.release();
+//                }
                 
                 rvec.release();
                 rmat1.release();

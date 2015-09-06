@@ -15,22 +15,27 @@ ControlArm::PIDControl::PIDControl()
 {
     integral = 0;
     lastError = 0;
-    Kp=100;
-    Ki=0;
+    Kp=400;
+    Ki=40;
     Kd=0;
 }
 
 int ControlArm::PIDControl::update(double value, double dest)
 {
-    double error = (value - dest);
+    double error = value - dest;
     double derivative = error - lastError;
     
     lastError = error;
     
     double out = (error * Kp + integral * Ki + derivative + Kd + 0.5);
+    
+    cerr << error << endl;
         
     if (out > MAX_ERROR){
         return (int)MAX_ERROR;
+    }
+    else if (out < -MAX_ERROR){
+        return -(int)MAX_ERROR;
     }
     else{
         integral+= error;
@@ -81,17 +86,62 @@ void ControlArm::GetArmPose(double *angles)
 
 void ControlArm::GetCurrentPose(double *angles)
 {
-    double x = jointPositions[3].x - jointPositions[0].x;
-    double z = jointPositions[3].z - jointPositions[0].z;
+    Point3f vector1 = jointPositions[2] - jointPositions[0];
+    vector1.y = 0;
+    Point3f vector2 = jointPositions[3] - jointPositions[0];
+    vector2.y = 0;
+    Point3f baseVector;
+    if(CalculateLength(vector1) > CalculateLength(vector2))
+    {
+        baseVector = vector1;
+    }
+    else
+    {
+        baseVector = vector2;
+    }
+
+    
+    double x = baseVector.x;
+    double z = baseVector.z;
     
     currentAngles[0] = atan2(z, x);
     
-    currentAngles[1] = CalculateAngle(CalculateVector(jointPositions[1], jointPositions[0]), CalculateVector(jointPositions[1], jointPositions[2]));
+    currentAngles[1] = CalculateAngle(CalculateVector(jointPositions[1], jointPositions[0]), CalculateVector(jointPositions[2], jointPositions[1]));
     
     currentAngles[2] = 3.14159 - CalculateAngle(CalculateVector(jointPositions[2], jointPositions[1]), CalculateVector(jointPositions[2], jointPositions[3]));
+    
+    //If joint 2 is further away from camera 1 than joint 1
+    if (jointPositions[2].z > jointPositions[1].z){
+        currentAngles[1] = -currentAngles[1];
+    }
+    
+//    if (currentAngles[2] < 0.3){
+//        Point3f projected3D =CalculateVector(jointPositions[1], jointPositions[3]);
+//        Point3f tip3D = jointPositions[3] - jointPositions[2];
+//
+//        Point2f projected2D, tip2D;
+//        
+//        projected2D = Convert3fTo2f(projected3D);
+//        tip2D = Convert3fTo2f(tip3D);
+//        
+//        float angle = atan2(projected2D.x,projected2D.y);
+//        
+//        float tipY = cos(angle) * tip2D.y - sin(angle) * tip2D.x;
+//        
+//        if ((tip2D.x > 0 && tipY > 0) || (tipY > 0 && tip2D.x < 0 && currentAngles[1] < 0)){
+//            currentAngles[2] = -currentAngles[2];
+//        }
+//    }
+    
     //cerr << "Link 0: " << link0 << " Link 1: " << link1 << " Link 2: " << link2 << endl;
-
     //cerr << "Angle 0 " << currentAngles[0] << " Angle 1 " << currentAngles[1] << " Angle 2 " << currentAngles[2] << endl;
+    
+    int dir = FindAngleDirection(baseVector, jointPositions[1] - jointPositions[2], jointPositions[3] - jointPositions[2]);
+    
+    if ((dir > 0 && currentAngles[1] > 0) || (dir < 0 && currentAngles[1] < 0)){
+        currentAngles[2] = -currentAngles[2];
+    }
+    
     
     angles[0] = currentAngles[0];
     angles[1] = currentAngles[1];
@@ -116,7 +166,7 @@ void ControlArm::SetTarget(Point3f target)
         //cerr << "OUT OF REACH. NEW TARGET: " << targetPosition.x << " " << targetPosition.y << " " << targetPosition.z << endl;
     }
     FindInverseKinematics();
-    //cerr << "NEW ANGLE0: " << jointAngles[0] << " ANGLE1: " << jointAngles[1] << " ANGLE2: " << jointAngles[2] << endl;
+    cerr << "NEW ANGLE0: " << jointAngles[0] << " ANGLE1: " << jointAngles[1] << " ANGLE2: " << jointAngles[2] << endl;
 }
 
 void ControlArm::UpdateArmPose(Point3f detected)

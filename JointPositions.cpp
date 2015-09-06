@@ -156,7 +156,7 @@ Point3f Calculate3DPoint(Point2f pt1, Point2f pt2, Mat &cameraMatrix1, Mat &came
     
     double xPos = (b*xTrans + zTrans)/(1/a+b);
     double zPos = (xTrans - a*zTrans)/(1/b+a);
-    double yPos = (y1/fy1 * (zPos+zTrans) + yTrans + y2/fy2 * (-xPos+xTrans))/2;
+    double yPos = -(y1/fy1 * (zPos+zTrans) + yTrans + y2/fy2 * (-xPos+xTrans))/2;
 
     return Point3f(xPos, yPos, zPos);
 }
@@ -190,7 +190,57 @@ double CalculateDotProduct(Point3f a, Point3f b)
     return a.x * b.x + a.y * b.y + a.z * b.z;
 }
 
+Point3f CalculateCrossProduct(Point3f a, Point3f b)
+{
+    return Point3f(a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x);
+}
+
+int FindAngleDirection(Point3f baseVector, Point3f link1, Point3f link2)
+{
+    Point3f cross = CalculateCrossProduct(baseVector, CalculateCrossProduct(link1, link2));
+    if(cross.y > 0)
+    {
+        return 1;
+    }
+    else if(cross.y < 0)
+    {
+        return -1;
+    }
+    else
+    {
+        return 0;
+    }
+}
+
 double CalculateLength(Point3f a)
 {
     return sqrt(CalculateDotProduct(a, a));
+}
+
+Point3f CalculateUnitVector(Point3f a, Point3f b){
+    Point3f c = CalculateVector(a, b);
+    double length = CalculateLength(a);
+    c.x = c.x/length;
+    c.y = c.y/length;
+    c.z = c.z/length;
+    return c;
+}
+
+Point3f MultiplyVector(Point3f a, double length){
+    a.x = a.x*length;
+    a.y = a.y*length;
+    a.z = a.z*length;
+    return a;
+}
+
+Point2f Convert3fTo2f(Point3f a){
+    Point2f b;
+    if ((a.x > 0 && a.z > 0) || (a.x < 0 && a.z < 0))
+        b.x = sqrt(a.x*a.x + a.z*a.z);
+    else
+        b.x = -sqrt(a.x*a.x + a.z*a.z);
+    
+    b.y = a.y;
+    
+    return b;
 }

@@ -66,7 +66,7 @@ protected:
 private:
     
     double link0, link1, link2;
-    Point3f jointPositions[5];
+    Point3f jointPositions[4];
     double jointAngles[3];
     double currentAngles[3];
     Point3f targetPosition;

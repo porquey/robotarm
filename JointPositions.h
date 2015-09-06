@@ -29,7 +29,12 @@ double CalculateDisplacement(Point a, Point b);
 double CalculateAngle(Point3f a, Point3f b);
 Point3f CalculateVector(Point3f a, Point3f b);
 double CalculateDotProduct(Point3f a, Point3f b);
+Point3f CalculateCrossProduct(Point3f a, Point3f b);
+int FindAngleDirection(Point3f baseVector, Point3f link1, Point3f link2);
 double CalculateLength(Point3f a);
+Point3f CalculateUnitVector(Point3f a, Point3f b);
+Point3f MultiplyVector(Point3f a, double length);
+Point2f Convert3fTo2f(Point3f a);
 
 #endif /* defined(__robotarm__JointPositions__) */
 

@@ -2,6 +2,7 @@
 #include <sstream>
 #include <time.h>
 #include <stdio.h>
+#include <unistd.h>
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -13,6 +14,7 @@
 #include "CalibrateEnvironment.h"
 #include "ControlArm.h"
 #include "JointPositions.h"
+#include "GraphRecorder.h"
 
 #ifndef _CRT_SECURE_NO_WARNINGS
 # define _CRT_SECURE_NO_WARNINGS
@@ -24,9 +26,9 @@
 #define CAMERA1 1
 #define CAMERA2 2
 
-#define LINK0 15.8
-#define LINK1 20.2
-#define LINK2 17.4
+#define LINK0 17
+#define LINK1 20
+#define LINK2 18.5
 
 
 using namespace cv;
@@ -165,24 +167,23 @@ int main(int argc, char** argv)
     cerr << "Initialising" << endl;
     Mat thresh1, thresh2, dst1, dst2;
 
-    clock_t beginTime = clock();;
+    clock_t beginTime = clock();
+    clock_t intervalTime = 100000;
     //int frames = 0;
     ControlArm control(LINK0, LINK1, LINK2);
     ControlArm::PIDControl pid0 = ControlArm::PIDControl();
     ControlArm::PIDControl pid1 = ControlArm::PIDControl();
     ControlArm::PIDControl pid2 = ControlArm::PIDControl();
-    double destAngle = INTMAX_MAX;
-
+    double destAngle = 0;
+    bool PIDEnabled = false;
+    
+    GraphRecorder record;
+    
     while(inputCapture1.isOpened() && inputCapture2.isOpened())
     {
         beginTime = clock();
-        /*frames++;
-        if(float(clock() - beginTime)/CLOCKS_PER_SEC >= 1)
-        {
-            //cerr << "FPS: " << frames << " " << float(clock() - beginTime)/CLOCKS_PER_SEC <<endl;
-            frames = 0;
-            beginTime = clock();
-        }*/
+        //frames++;
+        
         
         // Read and transform images from cameras
         inputCapture1.read(image1);
@@ -195,8 +196,8 @@ int main(int argc, char** argv)
         t2.release();
         
         //cerr << "Image remapping: " << float(clock() - beginTime)/CLOCKS_PER_SEC << endl;
-        sum1 += float(clock() - beginTime)/CLOCKS_PER_SEC;
-        beginTime = clock();
+        //sum1 += float(clock() - beginTime)/CLOCKS_PER_SEC;
+        //beginTime = clock();
         
         vector<bool> detectedVec;
         vector<Point3f> coords, coordsLast;
@@ -208,6 +209,8 @@ int main(int argc, char** argv)
         static Point3f link0[2], link1[2], link2[2];
         static KeyPoint random0[4], sorted0[4], random1[4], sorted1[4], random2[4], sorted2[4];
 
+        dst1 = image1.clone();
+        dst2 = image2.clone();
         
         if(checkBlobs)
         {
@@ -228,19 +231,18 @@ int main(int argc, char** argv)
                 detectedVec.push_back(detected);
                 keypointVec1.push_back(keypointVec[0]);
                 keypointVec2.push_back(keypointVec[1]);
-                
+                string posStr = "X: " + to_string(coordTemp.x) + "  Y: " + to_string(coordTemp.y) + "  Z: " + to_string(coordTemp.z);
+                //putText(dst1, posStr, Point(5, 15 * (i + 1)), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 255, 255));
             }
             
-            cv::drawKeypoints(image1, keypointVec1, dst1, cv::Scalar(0, 255, 255), cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
-            cv::drawKeypoints(image2, keypointVec2, dst2, cv::Scalar(0, 255, 255), cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
+            cv::drawKeypoints(dst1, keypointVec1, dst1, cv::Scalar(0, 255, 255), cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
+            cv::drawKeypoints(dst2, keypointVec2, dst2, cv::Scalar(0, 255, 255), cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
+
         }
         else
         {
 
             KeyPoint p1, p2, p3, p4;
-            
-            dst1 = image1.clone();
-            dst2 = image2.clone();
             
             static bool firstDetect0 = false, firstDetect1 = false;
 
@@ -368,7 +370,7 @@ int main(int argc, char** argv)
             circle(dst2, sorted2[3].pt, 5, Scalar(0, 0, 255));
             line(dst2, sorted2[2].pt, sorted2[3].pt, Scalar(255,0,0));
             
-            string posStr = "X: " + to_string(joint1.x) + "  Y: " + to_string(joint1.y) + "  Z: " + to_string(joint1.z);
+            /*string posStr = "X: " + to_string(joint1.x) + "  Y: " + to_string(joint1.y) + "  Z: " + to_string(joint1.z);
             putText(dst1, posStr, Point(5, 15 * 1), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 255, 255));
             posStr = "X: " + to_string(joint2.x) + "  Y: " + to_string(joint2.y) + "  Z: " + to_string(joint2.z);
             putText(dst1, posStr, Point(5, 15 * 2), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 255, 255));
@@ -377,7 +379,7 @@ int main(int argc, char** argv)
             putText(dst2, angleStr, Point(5, 15 * 2), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 255, 255));
             angleStr = "JOINT2: " + to_string(angle2);
             putText(dst2, angleStr, Point(5, 15 * 3), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 255, 255));
-
+*/
         }
         
         KeyPoint keypoint1, keypoint2;
@@ -390,44 +392,38 @@ int main(int argc, char** argv)
             circle(dst1, keypoint1.pt, 5, Scalar(0, 255, 255));
             circle(dst2, keypoint2.pt, 5, Scalar(0, 255, 255));
             string posStr = "X: " + to_string(targetCoord.x) + "  Y: " + to_string(targetCoord.y) + "  Z: " + to_string(targetCoord.z);
-            putText(dst1, posStr, Point(5, 15 * 4), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 255, 255));
+            //putText(dst1, posStr, Point(5, 15 * 5), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 255));
             
             
         }
    
         //cerr << "Blob detection: " << float(clock() - beginTime)/CLOCKS_PER_SEC << endl;
-        sum2 += float(clock() - beginTime)/CLOCKS_PER_SEC;
-        beginTime = clock();
+        //sum2 += float(clock() - beginTime)/CLOCKS_PER_SEC;
+        //beginTime = clock();
         
         
  
         
         /////CONTROL/////
         Point2f pt1, pt2;
-        Point3f tempTarget = Point3f(50, 50, 50);
+        Point3f tempTarget = Point3f(-200, -100, -200);
         ReprojectPoints(tempTarget, pt1, pt2, cameraMatrix1, cameraMatrix2, translation);
-        circle(dst1, pt1, 10, Scalar(0, 255, 255));
-        circle(dst2, pt2, 10, Scalar(0, 255, 255));
+        //circle(dst1, pt1, 10, Scalar(0, 0, 255));
+        //circle(dst2, pt2, 10, Scalar(0, 0, 255));
         
-
-        vector<Point3f> joints;
-        joints.push_back(base);
-        joints.push_back(joint1);
-        joints.push_back(joint2);
-        joints.push_back(tip);
         //cerr << base << " " << joint1 << " " << joint2 << " " << tip << endl;
-        control.SetArmPose(joints);
+        control.SetArmPose(coords);
         control.SetTarget(tempTarget);
         static double currAngles[3];
         control.GetCurrentPose(currAngles);
-        
+        /*
         string angleStr;
         angleStr = "JOINT0: " + to_string(currAngles[0]);
-        putText(dst2, angleStr, Point(200, 15 * 1), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 255));
+        putText(dst2, angleStr, Point(5, 15 * 1), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 255));
         angleStr = "JOINT1: " + to_string(currAngles[1]);
-        putText(dst2, angleStr, Point(200, 15 * 2), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 255));
+        putText(dst2, angleStr, Point(5, 15 * 2), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 255));
         angleStr = "JOINT2: " + to_string(currAngles[2]);
-        putText(dst2, angleStr, Point(200, 15 * 3), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 255));
+        putText(dst2, angleStr, Point(5, 15 * 3), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 255));
         
         double angles[3];
         control.GetArmPose(angles);
@@ -437,17 +433,23 @@ int main(int argc, char** argv)
         putText(dst2, angleStr, Point(5, 15 * 5), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 255));
         angleStr = "SET2: " + to_string(angles[2]);
         putText(dst2, angleStr, Point(5, 15 * 6), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 255));
-//        
-//        if (destAngle != INTMAX_MAX)
-//        {
-//            control.SendJointActuators(0, (pid1.update(0, destAngle)), 0);
-//        }
-//        else{
-//            control.SendJointActuators(0, 0, 0);
-//            pid1.reset();
-//        }
-        ///////
-        //cerr << "sent" << endl;
+         */
+        if (PIDEnabled)
+        {
+            control.SendJointActuators(50, pid1.update(currAngles[1], destAngle), 0);
+        }
+        
+        record.writeValue(currAngles[1], destAngle, clock());
+        
+        
+        string angleStr;
+        angleStr = "J1 Curr Angle: " + to_string(currAngles[1]);
+        putText(dst2, angleStr, Point(5, 15 * 1), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 255));
+        angleStr = "J1 Dest Angle: " + to_string(destAngle);
+        putText(dst2, angleStr, Point(5, 15 * 2), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 255));
+        angleStr = "J1 Error: " + to_string(destAngle- currAngles[1]);
+        putText(dst2, angleStr, Point(5, 15 * 3), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 255));
+
         
         
         Point2f point1;
@@ -465,15 +467,9 @@ int main(int argc, char** argv)
             //}
         }
         
-        //cerr << "forest is a chump" << endl;
-
-        
         
         imshow("Camera2", dst2);
         imshow("Camera1", dst1);
-        
-        //cerr << "WHHAAT" << endl;
-
         
         /*
         
@@ -481,8 +477,16 @@ int main(int argc, char** argv)
         beginTime = clock();
         */
         
+        while((clock()-beginTime) < intervalTime){};
+        cerr << "FPS: " << (clock()-beginTime) << endl;
+
+        
         char ch = waitKey(15);
-        if(ch == 'e')
+        if(ch == 'l')
+        {
+            control.CalculateLinkLengths();
+        }
+        else if(ch == 'e')
         {
             CalibrateEnvironment(inputCapture1, inputCapture2);
         }
@@ -582,18 +586,25 @@ int main(int argc, char** argv)
         }
         else if(ch == 'a')
         {
-            //cin >> destAngle;
-            control.SendJointActuators(0, 0, 0);
+            cin >> destAngle;
+            cerr << "PID enabled. Target : " << destAngle << endl;
+            PIDEnabled = true;
+            pid1.reset();
         }
         else if(ch == 'b')
         {
-            //cin >> destAngle;
-            control.SendJointActuators(0, 0, 0);
+            cerr << "PID disabled" << endl;
+            PIDEnabled = false;
+            control.SendJointActuators(50, 0, 0);
         }
-        
-
-
-        //cerr << "Draw on image: " << float(clock() - beginTime)/CLOCKS_PER_SEC << endl;
+        else if (ch == 's')
+        {
+            cin >> destAngle;
+            PIDEnabled = true;
+            pid1.reset();
+            control.SendJointActuators(50, 0, 0);
+            record.start("test.txt");
+        }
         
         fcount++;
         //cerr << fcount << endl;
