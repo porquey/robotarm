@@ -14,16 +14,14 @@ void GraphRecorder::open(char* s){
 }
 
 void GraphRecorder::writeValue(double value, double target, double time){
-    if ((clock() - targetTime) > IDLE_TIME){
-        recording = false;
-    }
+
     if (recording){
-        
-        fs << value << "\t" << time << endl;
-        
-        if (targetTime == 0 && (abs(value - target) < 0.01))
-        {
-            targetTime = clock();
+        if (targetTime != 0 && (clock() - targetTime) > TEST_TIME){
+            recording = false;
+            close();
+        }
+        else{
+            fs << value << "\t" << time << endl;
         }
     }
 }
@@ -38,5 +36,5 @@ void GraphRecorder::start(char* s){
     cerr << endl << endl << "RECORDING STARTED." << endl << endl;
     open(s);
     recording = true;
-    targetTime = 0;
+    targetTime = clock();
 }

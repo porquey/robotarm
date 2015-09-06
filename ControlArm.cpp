@@ -15,6 +15,7 @@ ControlArm::PIDControl::PIDControl()
 {
     integral = 0;
     lastError = 0;
+    started = false;
     Kp=400;
     Ki=40;
     Kd=0;
@@ -23,13 +24,18 @@ ControlArm::PIDControl::PIDControl()
 int ControlArm::PIDControl::update(double value, double dest)
 {
     double error = value - dest;
+    
+    if (abs(error-lastError) > 1 && started){
+        error = lastError;
+        started = true;
+    }
     double derivative = error - lastError;
     
     lastError = error;
     
     double out = (error * Kp + integral * Ki + derivative + Kd + 0.5);
     
-    cerr << error << endl;
+    cerr << "Error: " << error << endl;
         
     if (out > MAX_ERROR){
         return (int)MAX_ERROR;
@@ -45,6 +51,7 @@ int ControlArm::PIDControl::update(double value, double dest)
 
 void ControlArm::PIDControl::reset()
 {
+    started = false;
     integral = 0;
     lastError = 0;
 }
@@ -61,12 +68,15 @@ void ControlArm::SetArmPose(vector<Point3f> joints)
     }
 }
 
-void ControlArm::CalculateLinkLengths()
+void ControlArm::CalculateLinkLengths(double &l0, double &l1, double &l2)
 {
     link0 = CalculateLength(CalculateVector(jointPositions[1], jointPositions[0]));
     link1 = CalculateLength(CalculateVector(jointPositions[2], jointPositions[1]));
     link2 = CalculateLength(CalculateVector(jointPositions[3], jointPositions[2]));
-    //cerr << "Link 0: " << link0 << " Link 1: " << link1 << " Link 2: " << link2 << endl;
+    l0 = link0;
+    l1 = link1;
+    l2 = link2;
+    cerr << "Link 0: " << link0 << " Link 1: " << link1 << " Link 2: " << link2 << endl;
 }
 
 void ControlArm::SetLinkLengths(double l0, double l1, double l2)
@@ -104,7 +114,15 @@ void ControlArm::GetCurrentPose(double *angles)
     double x = baseVector.x;
     double z = baseVector.z;
     
-    currentAngles[0] = atan2(z, x);
+    currentAngles[0] = atan2(z, x) + HALF_PI;
+    if(currentAngles[0] > PI)
+    {
+        currentAngles[0] -= 2 * PI;
+    }
+    else if(currentAngles[0] < -PI)
+    {
+        currentAngles[0] += 2 * PI;
+    }
     
     currentAngles[1] = CalculateAngle(CalculateVector(jointPositions[1], jointPositions[0]), CalculateVector(jointPositions[2], jointPositions[1]));
     
@@ -158,21 +176,43 @@ void ControlArm::SetTarget(Point3f target)
         Point3f pointDiff = targetPosition - jointPositions[1];
         double absDiff = CalculateLength(pointDiff);
         
-        targetPosition.x = (pointDiff.x / absDiff) * (link1 + link2);
-        targetPosition.y = (pointDiff.y / absDiff) * (link1 + link2);
-        targetPosition.z = (pointDiff.z / absDiff) * (link1 + link2);
+        targetPosition.x = (int)(pointDiff.x / absDiff) * (link1 + link2);
+        targetPosition.y = (int)(pointDiff.y / absDiff) * (link1 + link2);
+        targetPosition.z = (int)(pointDiff.z / absDiff) * (link1 + link2);
         targetPosition = targetPosition + jointPositions[1];
         
         //cerr << "OUT OF REACH. NEW TARGET: " << targetPosition.x << " " << targetPosition.y << " " << targetPosition.z << endl;
     }
     FindInverseKinematics();
-    cerr << "NEW ANGLE0: " << jointAngles[0] << " ANGLE1: " << jointAngles[1] << " ANGLE2: " << jointAngles[2] << endl;
+    //cerr << "NEW ANGLE0: " << jointAngles[0] << " ANGLE1: " << jointAngles[1] << " ANGLE2: " << jointAngles[2] << endl;
 }
 
-void ControlArm::UpdateArmPose(Point3f detected)
+bool ControlArm::UpdateArmPose(Point3f detected)
 {
-    SetTarget(CalculateCompensationStep(detected) + targetPosition);
-    
+    if(CalculateLength(jointPositions[3] - targetPosition) < 10)
+    {
+        cerr << "Reached distance of " << CalculateLength(jointPositions[3] - targetPosition) << " from target" << endl;
+        cerr << "Target reached" << endl;
+        return false;
+    }
+    else if(it > 10)
+    {
+        cerr << "Reached distance of " << CalculateLength(jointPositions[3] - targetPosition) << " from target" << endl;
+        cerr << "Terminating after 10 iterations" << endl;
+        return false;
+    }
+    else
+    {
+        SetTarget(CalculateCompensationStep(detected) + targetPosition);
+        cerr << "Reached distance of " << CalculateLength(jointPositions[3] - targetPosition) << " from target" << endl;
+        cerr << "New target is " << targetPosition << endl;
+        return true;
+    }
+}
+
+void ControlArm::IncrementIteration()
+{
+    it++;
 }
 
 void ControlArm::SendJointActuators(int diff0, int diff1, int diff2){
@@ -181,27 +221,83 @@ void ControlArm::SendJointActuators(int diff0, int diff1, int diff2){
 
 void ControlArm::FindInverseKinematics()
 {
-    double x, z;
     double r, s, d;
     
-    x = targetPosition.x - jointPositions[0].x;
-    z = targetPosition.z - jointPositions[0].z;
-    //cerr << "X: " << x << " Z: " << z << endl;
+    double a = targetPosition.x - jointPositions[0].x;
+    double b = targetPosition.z - jointPositions[0].z;
     
-    jointAngles[0] = atan2(z, x);
+    jointAngles[0] = atan2(b, a) + HALF_PI;
+    if(jointAngles[0] > PI)
+    {
+        jointAngles[0] -= 2 * PI;
+    }
+    else if(jointAngles[0] < -PI)
+    {
+        jointAngles[0] += 2 * PI;
+    }
+
+    double x = targetPosition.x - jointPositions[1].x;
+    double z = targetPosition.z - jointPositions[1].z;
     
-    r = x * x + z * z;
-    s = (targetPosition.y - jointPositions[1].y) * (targetPosition.y - jointPositions[1].y);
+    r = sqrt(x * x + z * z);
+    s = targetPosition.y - jointPositions[1].y;
     
-    d = (r + s - link2 * link2 - link1 * link1) / (2 * link1 * link2);
+    d = (r * r + s * s - link2 * link2 - link1 * link1) / (2 * link1 * link2);
     
-    jointAngles[2] = atan2(sqrt(1 - d * d), d);
-    jointAngles[1] = atan2(sqrt(s), sqrt(r)) - atan2(sin(jointAngles[2]), link1 + link2 * cos(jointAngles[2]));
+    jointAngles[2] = atan2(-sqrt(1 - d * d), d);
+    //jointAngles[1] = atan2(sqrt(s), sqrt(r)) - atan2(sin(jointAngles[2]), link1 + link2 * cos(jointAngles[2]));
     
+    double k1 = link1 + link2 * cos(jointAngles[2]);
+    double k2 = link2 * sin(jointAngles[2]);
+
+    jointAngles[1] = atan2(s, r) - atan2(k2, k1);
+    
+    jointAngles[2] = -jointAngles[2];
+    jointAngles[1] = HALF_PI - jointAngles[1];
+    
+    
+    if (targetPosition.z > jointPositions[1].z){
+        jointAngles[0] += PI;
+        
+        if(jointAngles[0] > PI)
+        {
+            jointAngles[0] -= 2 * PI;
+        }
+        else if(jointAngles[0] < -PI)
+        {
+            jointAngles[0] += 2 * PI;
+        }
+        
+        jointAngles[1] = -jointAngles[1];
+        jointAngles[2] = -jointAngles[2];
+        cerr << "FLIPPED" << endl;
+    }
+    
+    /*
+    if(jointAngles[1] > 1.7)
+    {
+        jointAngles[1] = 1.7;
+    }
+    if(jointAngles[1] < -1.7)
+    {
+        jointAngles[1] = -1.7;
+    }
+    
+    if(jointAngles[2] > 1.7)
+    {
+        jointAngles[2] = 1.7;
+    }
+    if(jointAngles[2] < -1.7)
+    {
+        jointAngles[2] = -1.7;
+    }*/
+    
+        
 }
 
 void ControlArm::InitFuzzyController()
 {
+    it = 0;
     fuzzySet.clear();
     fuzzySet.push_back(FuzzyRule(Point3f(-10000, -10000, -10000), Point3f(-5, -5.5, -5), Point3f(-3, -1.5, -2), Point3f(-0.6, -0.6, -0.6)));
     fuzzySet.push_back(FuzzyRule(Point3f(-5, -5.5, -5), Point3f(-3, -1.5, -2), Point3f(0, 0, 0), Point3f(-0.4, -0.4, -0.4)));

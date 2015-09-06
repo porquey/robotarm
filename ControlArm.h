@@ -11,6 +11,9 @@
 
 #define MAX_ERROR 164
 
+#define PI 3.14159265
+#define HALF_PI 1.570796
+
 using namespace std;
 using namespace cv;
 
@@ -25,6 +28,7 @@ public:
         void reset();
         
     private:
+        bool started;
         double lastError;
         double integral;
         double Kp;
@@ -50,13 +54,14 @@ public:
     ControlArm();
     ControlArm(double l0, double l1, double l2);
     void SetArmPose(vector<Point3f> joints);
-    void CalculateLinkLengths();
+    void CalculateLinkLengths(double &l0, double &l1, double &l2);
     void SetLinkLengths(double l0, double l1, double l2);
     void GetArmPose(double *angles);
     void GetCurrentPose(double *angles);
     void SendJointActuators(int diff0, int diff1, int diff2);
     void SetTarget(Point3f target);
-    void UpdateArmPose(Point3f detected);
+    bool UpdateArmPose(Point3f detected);
+    void IncrementIteration();
     void InitFuzzyController();
     
 protected:
@@ -71,6 +76,6 @@ private:
     double currentAngles[3];
     Point3f targetPosition;
     vector<FuzzyRule> fuzzySet;
-    
+    int it;
     
 };

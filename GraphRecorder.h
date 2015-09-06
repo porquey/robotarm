@@ -15,7 +15,7 @@
 #include <fstream>
 #include <cmath>
 
-#define IDLE_TIME 5000000
+#define TEST_TIME 20000000
 
 using namespace std;
 

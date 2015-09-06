@@ -26,9 +26,11 @@
 #define CAMERA1 1
 #define CAMERA2 2
 
-#define LINK0 17
-#define LINK1 20
-#define LINK2 18.5
+#define LINK0 170
+#define LINK1 200
+#define LINK2 185
+
+
 
 
 using namespace cv;
@@ -39,12 +41,14 @@ float fx1, fy1, cx1, cy1, fx2, fy2, cx2, cy2, xTrans, yTrans, zTrans;
 double sum1 = 0, sum2 = 0, sum3 = 0;
 int fcount = 0;
 
-int reprojectVal = 0, height = 0;
+int reprojectVal = 0, yOff = 0;
 
 bool checkBlobs = true;
 bool targetExists = false;
 
+Mat cameraMatrix1, cameraMatrix2, mapX1, mapY1, mapX2, mapY2, translation;
 
+double l0 = LINK0, l1 = LINK1, l2 = LINK2;
 
 void drawPoints(Mat &img1, Mat &img2, Point2f pt1, Point2f pt2, Scalar colour)
 {
@@ -52,9 +56,29 @@ void drawPoints(Mat &img1, Mat &img2, Point2f pt1, Point2f pt2, Scalar colour)
     circle(img2, pt2, 5, colour);//Scalar(r, g, b));
 }
 
+
+void Draw3DPoint(Point3f pt, Mat &dst1, Mat &dst2)
+{
+    Point2f a, b;
+    ReprojectPoints(pt, a, b, cameraMatrix1, cameraMatrix2, translation);
+    
+    circle(dst1, a, 5, Scalar(255, 255, 0));
+    circle(dst2, b, 5, Scalar(255, 255, 0));
+}
+
+void Draw3DLine(Point3f pt1, Point3f pt2, Mat &dst1, Mat &dst2)
+{
+    Point2f a1, b1, a2, b2;
+    ReprojectPoints(pt1, a1, b1, cameraMatrix1, cameraMatrix2, translation);
+    ReprojectPoints(pt2, a2, b2, cameraMatrix1, cameraMatrix2, translation);
+    
+    line(dst1, a1, a2, Scalar(255, 255, 0));
+    line(dst2, b1, b2, Scalar(255, 255, 0));
+}
+
+
 int main(int argc, char** argv)
 {
-    Mat cameraMatrix1, cameraMatrix2, mapX1, mapY1, mapX2, mapY2, translation;
     
     const string calibFileName = "EnvironmentCalibration.xml";
     
@@ -402,22 +426,28 @@ int main(int argc, char** argv)
         //beginTime = clock();
         
         
- 
+        double yOffset = yOff * 100;
+        int j = reprojectVal;
+        
         
         /////CONTROL/////
         Point2f pt1, pt2;
-        Point3f tempTarget = Point3f(-200, -100, -200);
+        Point3f tempTarget = Point3f(-200, yOffset, j * 100 - 300);
         ReprojectPoints(tempTarget, pt1, pt2, cameraMatrix1, cameraMatrix2, translation);
-        //circle(dst1, pt1, 10, Scalar(0, 0, 255));
-        //circle(dst2, pt2, 10, Scalar(0, 0, 255));
-        
+        circle(dst1, pt1, 10, Scalar(0, 0, 255));
+        circle(dst2, pt2, 10, Scalar(0, 0, 255));
+        string posStr = "TARGET " + to_string(tempTarget.x) + "  Y: " + to_string(tempTarget.y) + "  Z: " + to_string(tempTarget.z);
+        putText(dst1, posStr, Point(5, 15 * 4), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 255));
         //cerr << base << " " << joint1 << " " << joint2 << " " << tip << endl;
         control.SetArmPose(coords);
         control.SetTarget(tempTarget);
+        
         static double currAngles[3];
         control.GetCurrentPose(currAngles);
-        /*
+        
         string angleStr;
+
+        
         angleStr = "JOINT0: " + to_string(currAngles[0]);
         putText(dst2, angleStr, Point(5, 15 * 1), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 255));
         angleStr = "JOINT1: " + to_string(currAngles[1]);
@@ -433,30 +463,62 @@ int main(int argc, char** argv)
         putText(dst2, angleStr, Point(5, 15 * 5), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 255));
         angleStr = "SET2: " + to_string(angles[2]);
         putText(dst2, angleStr, Point(5, 15 * 6), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 255));
-         */
-        if (PIDEnabled)
+         
+        bool inRange = true;
+        for (int i = 0; i < 3; i++){
+            if (currAngles[i] < -3.14 || currAngles[i] > 3.14 )
+            {
+                inRange = false;
+                cerr << "JOINT " << i << "OUT OF RANGE: " << currAngles[i] << endl;
+            }
+        }
+        if (PIDEnabled && inRange)
         {
-            control.SendJointActuators(50, pid1.update(currAngles[1], destAngle), 0);
+            control.SendJointActuators(pid0.update(currAngles[0], angles[0]), pid1.update(currAngles[1], angles[1]),pid1.update(currAngles[2], angles[2]));
+        }
+        else{
+            cerr << "COULD NOT DETECT" << endl;
         }
         
-        record.writeValue(currAngles[1], destAngle, clock());
+        record.writeValue(currAngles[0], destAngle, clock());
         
+      
+        Point3f basej = coords[1];
         
-        string angleStr;
-        angleStr = "J1 Curr Angle: " + to_string(currAngles[1]);
-        putText(dst2, angleStr, Point(5, 15 * 1), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 255));
-        angleStr = "J1 Dest Angle: " + to_string(destAngle);
-        putText(dst2, angleStr, Point(5, 15 * 2), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 255));
-        angleStr = "J1 Error: " + to_string(destAngle- currAngles[1]);
-        putText(dst2, angleStr, Point(5, 15 * 3), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 255));
+        double height = l1 * sin(HALF_PI - angles[1]);
+        double width = l1 * cos(HALF_PI - angles[1]);
+        
+        Point3f jj1 = Point3f(sin(angles[0]) * width + basej.x, height + basej.y, basej.z - cos(angles[0]) * width);
+        Draw3DPoint(basej, dst1, dst2);
+        Draw3DPoint(jj1, dst1, dst2);
+        Draw3DLine(basej, jj1, dst1, dst2);
+        Draw3DLine(basej, coords[0], dst1, dst2);
+
+        Point3f baseVec = tempTarget - coords[0];
+        baseVec.y = 0;
+        int d = FindAngleDirection(baseVec, coords[1] - coords[2], tempTarget - coords[2]);
+        
+        double extraHeight = l2 * sin(HALF_PI - angles[1] + angles[2] * d);
+        double extraWidth = l2 * cos(HALF_PI - angles[1] + angles[2] * d);
+        Point3f jj2 = Point3f(jj1.x + sin(angles[0]) * extraWidth, jj1.y + extraHeight, jj1.z - cos(angles[0]) * extraWidth);
+        Draw3DPoint(jj2, dst1, dst2);
+        Draw3DLine(jj1, jj2, dst1, dst2);
+        
+//        
+//        string angleStr;
+//        angleStr = "J0 Curr Angle: " + to_string(currAngles[0]);
+//        putText(dst2, angleStr, Point(5, 15 * 1), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 255));
+//        angleStr = "J0 Dest Angle: " + to_string(destAngle);
+//        putText(dst2, angleStr, Point(5, 15 * 2), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 255));
+//        angleStr = "J0 Error: " + to_string(destAngle- currAngles[0]);
+//        putText(dst2, angleStr, Point(5, 15 * 3), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 255));
 
         
         
         Point2f point1;
         Point2f point2;
         
-        double yOffset = height * 100;
-        int j = reprojectVal;
+        
         for(int i = 0; i < 5; i++)
         {
             //for(int j = 2; j < 3; j++)
@@ -482,9 +544,10 @@ int main(int argc, char** argv)
 
         
         char ch = waitKey(15);
+        //cerr << "wait key: " << ch << endl;
         if(ch == 'l')
         {
-            control.CalculateLinkLengths();
+            control.CalculateLinkLengths(l0, l1, l2);
         }
         else if(ch == 'e')
         {
@@ -572,13 +635,21 @@ int main(int argc, char** argv)
         {
             reprojectVal = 4;
         }
+        else if(ch == '6')
+        {
+            reprojectVal = 5;
+        }
+        else if(ch == '7')
+        {
+            reprojectVal = 5;
+        }
         else if(ch == '-')
         {
-            height++;
+            yOff++;
         }
         else if(ch == '=')
         {
-            height--;
+            yOff--;
         }
         else if((int)ch == 27)
         {
@@ -586,23 +657,29 @@ int main(int argc, char** argv)
         }
         else if(ch == 'a')
         {
-            cin >> destAngle;
             cerr << "PID enabled. Target : " << destAngle << endl;
             PIDEnabled = true;
             pid1.reset();
+            pid0.reset();
+            pid2.reset();
         }
         else if(ch == 'b')
         {
             cerr << "PID disabled" << endl;
             PIDEnabled = false;
-            control.SendJointActuators(50, 0, 0);
+            control.SendJointActuators(0,0,0);
+//            cerr << "PID enabled. Target : " << destAngle << endl;
+//            destAngle = -1.5;
+//            PIDEnabled = true;
+//            pid1.reset();
+//            pid0.reset();
+//            pid2.reset();
         }
         else if (ch == 's')
         {
-            cin >> destAngle;
+            destAngle = 1;
             PIDEnabled = true;
             pid1.reset();
-            control.SendJointActuators(50, 0, 0);
             record.start("test.txt");
         }
         
@@ -617,5 +694,6 @@ int main(int argc, char** argv)
             sum1 = sum2 = sum3 = 0;
             //break;
         }
+
     }
 }
