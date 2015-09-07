@@ -156,12 +156,12 @@ Point3f Calculate3DPoint(Point2f pt1, Point2f pt2, Mat &cameraMatrix1, Mat &came
     
     double xPos = (b*xTrans + zTrans)/(1/a+b);
     double zPos = (xTrans - a*zTrans)/(1/b+a);
-    double yPos = -(y1/fy1 * (zPos+zTrans) + yTrans + y2/fy2 * (-xPos+xTrans))/2;
+    double yPos = -(y1/fy1 * (zPos+zTrans) - yTrans + y2/fy2 * (-xPos+xTrans))/2;
     
-    double yPos1 = -(y1/fy1 * (zPos+zTrans) + yTrans);
-    double yPos2 = -(y2/fy2 * (-xPos+xTrans));
+    double yPos1 = -(y1/fy1 * (zPos+zTrans));
+    double yPos2 = -(y2/fy2 * (-xPos+xTrans)) - yTrans;
     
-    cerr << "Y DIFF: " << yPos1 - yPos2 << endl;
+    //cerr << "Y DIFF: " << yPos1 - yPos2 << endl;
 
     return Point3f(xPos, yPos, zPos);
 }

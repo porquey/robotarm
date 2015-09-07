@@ -51,6 +51,9 @@ offsetVec()
     
     offsetVec.push_back(cv::KeyPoint());
     offsetVec.push_back(cv::KeyPoint());
+    
+    filter[0].Init();
+    filter[1].Init();
 }
 
 
@@ -506,34 +509,46 @@ bool BlobHueDetector::GetJointPos(std::vector<cv::Mat> &srcVec, std::vector<cv::
             roi = cv::Rect(xLeft, yTop, xRight - xLeft + 1, yBottom - yTop + 1);
             cv::Mat roiMat = srcVec[i](roi);
             //imshow("ROI1", roiMat);
-            cv::KeyPoint point;
+            cv::KeyPoint point, avg;
             detectedVec.push_back(GetJointBlob(roiMat, point, thresh));
             
             point.pt.x += roi.x;
             point.pt.y += roi.y;
-            pointVec.push_back(point);
             if(detectedVec[i])
             {
                 countVec[i] = 0;
                 offsetVec[i] = point;
+                avg.pt = filter[i].Add(point.pt);
+                avg.size = point.size;
             }
             else
             {
                 countVec[i]++;
+                avg.pt = filter[i].Average();
+                avg.size = offsetVec[i].size;
             }
+            pointVec.push_back(avg);
+
         }
         else
         {
-            cv::KeyPoint point;
+            cv::KeyPoint point, avg;
             detectedVec.push_back(GetJointBlob(srcVec[i], point, thresh));
-            pointVec.push_back(point);
             if(detectedVec[i])
             {
                 countVec[i] = 0;
                 offsetVec[i] = point;
+                avg.pt = filter[i].Add(point.pt);
+                avg.size = point.size;
             }
+            else
+            {
+                avg.pt = filter[i].Average();
+                avg.size = offsetVec[i].size;
+            }
+            pointVec.push_back(avg);
         }
-        cv::imshow(std::string(std::to_string(i) + "TH"), thresh);
+        //cv::imshow(std::string(std::to_string(i) + "TH"), thresh);
 
     }
     
@@ -634,3 +649,38 @@ bool BlobHueDetector::GetJointBlob(cv::Mat &src, cv::KeyPoint &point, cv::Mat &t
     
 }
 
+BlobHueDetector::MovingAverageFilter::MovingAverageFilter(){
+    Init();
+}
+
+cv::Point2f BlobHueDetector::MovingAverageFilter::Add(cv::Point2f p){
+    
+    pointArray[iterator] = p;
+    iterator++;
+    
+    if(iterator == FILTER_NUMBER)
+    {
+        iterator = 0;
+    }
+    
+    cv::Point2f sum = cv::Point2f(0, 0);
+    for (int i = 0; i < FILTER_NUMBER; i++){
+        sum += pointArray[i];
+    }
+    return sum * ((float)1/FILTER_NUMBER);
+}
+
+cv::Point2f BlobHueDetector::MovingAverageFilter::Average(){
+    cv::Point2f sum = cv::Point2f(0, 0);
+    for (int i = 0; i < FILTER_NUMBER; i++){
+        sum += pointArray[i];
+    }
+    return sum * ((float)1/FILTER_NUMBER);
+}
+
+void BlobHueDetector::MovingAverageFilter::Init(){
+    for (int i = 0; i < FILTER_NUMBER; i++){
+        pointArray[i] = cv::Point2f(0, 0);
+    }
+    iterator = 0;
+}

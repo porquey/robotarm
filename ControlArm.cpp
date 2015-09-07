@@ -2,6 +2,7 @@
 
 ControlArm::ControlArm()
 {
+    startFuzzy = false;
 }
 
 ControlArm::ControlArm(double l0, double l1, double l2) :
@@ -9,6 +10,7 @@ link0(l0),
 link1(l1),
 link2(l2)
 {
+    startFuzzy = false;
 }
 
 ControlArm::PIDControl::PIDControl()
@@ -17,7 +19,7 @@ ControlArm::PIDControl::PIDControl()
     lastError = 0;
     started = false;
     Kp=400;
-    Ki=40;
+    Ki=30;
     Kd=0;
 }
 
@@ -35,7 +37,7 @@ int ControlArm::PIDControl::update(double value, double dest)
     
     double out = (error * Kp + integral * Ki + derivative + Kd + 0.5);
     
-    cerr << "Error: " << error << endl;
+    //cerr << "Error: " << error << endl;
         
     if (out > MAX_ERROR){
         return (int)MAX_ERROR;
@@ -54,6 +56,11 @@ void ControlArm::PIDControl::reset()
     started = false;
     integral = 0;
     lastError = 0;
+}
+
+double ControlArm::PIDControl::GetLastError()
+{
+    return lastError;
 }
 
 void ControlArm::SetArmPose(vector<Point3f> joints)
@@ -131,6 +138,17 @@ void ControlArm::GetCurrentPose(double *angles)
     //If joint 2 is further away from camera 1 than joint 1
     if (jointPositions[2].z > jointPositions[1].z){
         currentAngles[1] = -currentAngles[1];
+        currentAngles[0] += PI;
+        
+        if(currentAngles[0] > PI)
+        {
+            currentAngles[0] -= 2 * PI;
+        }
+        else if(currentAngles[0] < -PI)
+        {
+            currentAngles[0] += 2 * PI;
+        }
+        
     }
     
 //    if (currentAngles[2] < 0.3){
@@ -159,6 +177,7 @@ void ControlArm::GetCurrentPose(double *angles)
     if ((dir > 0 && currentAngles[1] > 0) || (dir < 0 && currentAngles[1] < 0)){
         currentAngles[2] = -currentAngles[2];
     }
+
     
     
     angles[0] = currentAngles[0];
@@ -187,12 +206,38 @@ void ControlArm::SetTarget(Point3f target)
     //cerr << "NEW ANGLE0: " << jointAngles[0] << " ANGLE1: " << jointAngles[1] << " ANGLE2: " << jointAngles[2] << endl;
 }
 
+void ControlArm::SetFuzzyTarget(Point3f target)
+{
+    fuzzyTarget = target;
+    //cerr << "TARGET: " << targetPosition.x << " " << targetPosition.y << " " << targetPosition.z << endl;
+    
+    if(CalculateLength(CalculateVector(fuzzyTarget, jointPositions[1])) > link1 + link2)
+    {
+        Point3f pointDiff = fuzzyTarget - jointPositions[1];
+        double absDiff = CalculateLength(pointDiff);
+        
+        fuzzyTarget.x = (int)(pointDiff.x / absDiff) * (link1 + link2 - 1);
+        fuzzyTarget.y = (int)(pointDiff.y / absDiff) * (link1 + link2 - 1);
+        fuzzyTarget.z = (int)(pointDiff.z / absDiff) * (link1 + link2 - 1);
+        fuzzyTarget = fuzzyTarget + jointPositions[1];
+        
+        //cerr << "OUT OF REACH. NEW TARGET: " << targetPosition.x << " " << targetPosition.y << " " << targetPosition.z << endl;
+    }
+    FindInverseKinematics();
+    //cerr << "NEW ANGLE0: " << jointAngles[0] << " ANGLE1: " << jointAngles[1] << " ANGLE2: " << jointAngles[2] << endl;
+}
+
 Point3f ControlArm::GetTarget()
 {
     return targetPosition;
 }
 
-bool ControlArm::UpdateArmPose(Point3f detected)
+Point3f ControlArm::GetFuzzyTarget()
+{
+    return fuzzyTarget;
+}
+
+bool ControlArm::UpdateArmPose(Point3f detected, double error0, double error1, double error2)
 {
     if(CalculateLength(jointPositions[3] - targetPosition) < 10)
     {
@@ -206,11 +251,17 @@ bool ControlArm::UpdateArmPose(Point3f detected)
         cerr << "Terminating after 10 iterations" << endl;
         return false;
     }
+    else if(abs(error0) <= 0.1 && abs(error1) <= 0.1 && abs(error2) <= 0.1)
+    {
+        SetFuzzyTarget(fuzzyTarget - CalculateCompensationStep(detected));
+        cerr << "Reached distance of " << CalculateLength(jointPositions[3] - targetPosition) << " from target" << endl;
+        cerr << "New target is " << fuzzyTarget << endl;
+        return true;
+    }
     else
     {
-        SetTarget(CalculateCompensationStep(detected) + targetPosition);
         cerr << "Reached distance of " << CalculateLength(jointPositions[3] - targetPosition) << " from target" << endl;
-        cerr << "New target is " << targetPosition << endl;
+        cerr << "Error0: " << error0 << " Error1: " << error1 << " Error2: " << error2 << endl;
         return true;
     }
 }
@@ -226,15 +277,27 @@ void ControlArm::SendJointActuators(int diff0, int diff1, int diff2){
 
 double ControlArm::GetError()
 {
+    cerr << "From Target: " << CalculateLength(CalculateVector(targetPosition, jointPositions[3])) << endl;
+    cerr << "From Fuzzy Target: " << CalculateLength(CalculateVector(fuzzyTarget, jointPositions[3])) << endl;
     return CalculateLength(CalculateVector(targetPosition, jointPositions[3]));
 }
 
 void ControlArm::FindInverseKinematics()
 {
+    Point3f temp;
+    if(startFuzzy)
+    {
+        temp = fuzzyTarget;
+    }
+    else
+    {
+        temp = targetPosition;
+    }
+    
     double r, s, d;
     
-    double a = targetPosition.x - jointPositions[0].x;
-    double b = targetPosition.z - jointPositions[0].z;
+    double a = temp.x - jointPositions[0].x;
+    double b = temp.z - jointPositions[0].z;
     
     jointAngles[0] = atan2(b, a) + HALF_PI;
     if(jointAngles[0] > PI)
@@ -246,11 +309,11 @@ void ControlArm::FindInverseKinematics()
         jointAngles[0] += 2 * PI;
     }
 
-    double x = targetPosition.x - jointPositions[1].x;
-    double z = targetPosition.z - jointPositions[1].z;
+    double x = temp.x - jointPositions[1].x;
+    double z = temp.z - jointPositions[1].z;
     
     r = sqrt(x * x + z * z);
-    s = targetPosition.y - jointPositions[1].y;
+    s = temp.y - jointPositions[1].y;
     
     d = (r * r + s * s - link2 * link2 - link1 * link1) / (2 * link1 * link2);
     
@@ -266,7 +329,7 @@ void ControlArm::FindInverseKinematics()
     jointAngles[1] = HALF_PI - jointAngles[1];
     
     
-    if (targetPosition.z > jointPositions[1].z){
+    if (temp.z > jointPositions[1].z){
         jointAngles[0] += PI;
         
         if(jointAngles[0] > PI)
@@ -308,12 +371,14 @@ void ControlArm::FindInverseKinematics()
 void ControlArm::InitFuzzyController()
 {
     it = 0;
+    startFuzzy = true;
     fuzzySet.clear();
-    fuzzySet.push_back(FuzzyRule(Point3f(-10000, -10000, -10000), Point3f(-5, -5.5, -5), Point3f(-3, -1.5, -2), Point3f(-0.6, -0.6, -0.6)));
-    fuzzySet.push_back(FuzzyRule(Point3f(-5, -5.5, -5), Point3f(-3, -1.5, -2), Point3f(0, 0, 0), Point3f(-0.4, -0.4, -0.4)));
-    fuzzySet.push_back(FuzzyRule(Point3f(-3, -1.5, -2), Point3f(0, 0, 0), Point3f(3, 1.5, 2), Point3f(0, 0, 0)));
-    fuzzySet.push_back(FuzzyRule(Point3f(0, 0, 0), Point3f(3, 1.5, 2), Point3f(5, 5.5, 5), Point3f(0.4, 0.4, 0.4)));
-    fuzzySet.push_back(FuzzyRule(Point3f(3, 1.5, 2), Point3f(5, 5.5, 5), Point3f(10000, 10000, 10000), Point3f(0.6, 0.6, 0.6)));
+    fuzzySet.push_back(FuzzyRule(Point3f(-10000, -10000, -10000), Point3f(-5, -5, -5), Point3f(-2.5, -2.5, -2.5), Point3f(-0.75, -0.75, -0.75)));
+    fuzzySet.push_back(FuzzyRule(Point3f(-5, -5, -5), Point3f(-2.5, -2.5, -2.5), Point3f(0, 0, 0), Point3f(-0.4, -0.4, -0.4)));
+    fuzzySet.push_back(FuzzyRule(Point3f(-2.5, -2.5, -2.5), Point3f(0, 0, 0), Point3f(2.5, 2.5, 2.5), Point3f(0, 0, 0)));
+    fuzzySet.push_back(FuzzyRule(Point3f(0, 0, 0), Point3f(2.5, 2.5, 2.5), Point3f(5, 5, 5), Point3f(0.4, 0.4, 0.4)));
+    fuzzySet.push_back(FuzzyRule(Point3f(2.5, 2.5, 2.5), Point3f(5, 5, 5), Point3f(10000, 10000, 10000), Point3f(0.75, 0.75, 0.75)));
+    SetFuzzyTarget(targetPosition);
 }
 
 Point3f ControlArm::CalculateCompensationStep(Point3f detected)
@@ -325,6 +390,7 @@ Point3f ControlArm::CalculateCompensationStep(Point3f detected)
         Point3f k = fuzzySet[i].GetWeighting(error);
         kSum = kSum + k;
     }
+    cerr << "KSUM: " << kSum << endl;
     return kSum;
 }
 

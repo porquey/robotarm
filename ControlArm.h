@@ -26,7 +26,7 @@ public:
         PIDControl();
         int update(double angle, double dest);
         void reset();
-        
+        double GetLastError();
     private:
         bool started;
         double lastError;
@@ -60,8 +60,10 @@ public:
     void GetCurrentPose(double *angles);
     void SendJointActuators(int diff0, int diff1, int diff2);
     void SetTarget(Point3f target);
+    void SetFuzzyTarget(Point3f target);
     Point3f GetTarget();
-    bool UpdateArmPose(Point3f detected);
+    Point3f GetFuzzyTarget();
+    bool UpdateArmPose(Point3f detected, double error0, double error1, double error2);
     void IncrementIteration();
     double GetError();
     void InitFuzzyController();
@@ -77,7 +79,8 @@ private:
     double jointAngles[3];
     double currentAngles[3];
     Point3f targetPosition;
+    Point3f fuzzyTarget;
     vector<FuzzyRule> fuzzySet;
     int it;
-    
+    bool startFuzzy;
 };

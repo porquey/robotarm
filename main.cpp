@@ -131,6 +131,8 @@ int main(int argc, char** argv)
     vector<BlobHueDetector> detector;
     BlobHueDetector targetDetector;
     
+    Point3f tempTarget;
+    
     bfs["HSV_Size"] >> hsvSize;
 
     if(hsvSize.data == NULL)
@@ -250,8 +252,11 @@ int main(int argc, char** argv)
 
                 bool detected = detector[i].GetJointPos(imageVec, keypointVec);
                 
-                cerr << "Joint" << i << ": ";
+               
+                
+                
                 Point3f coordTemp = Calculate3DPoint(keypointVec[0].pt, keypointVec[1].pt, cameraMatrix1, cameraMatrix2, translation);
+                
                 coords.push_back(coordTemp);
                 detectedVec.push_back(detected);
                 keypointVec1.push_back(keypointVec[0]);
@@ -427,15 +432,12 @@ int main(int argc, char** argv)
         //beginTime = clock();
         
         
-        double yOffset = yOff * 100;
-        double xOffset = xOff * 100;
-        double zOffset = zOff * 100;
+        
         int j = reprojectVal;
         
         
         /////CONTROL/////
         Point2f pt1, pt2;
-        Point3f tempTarget = Point3f(xOffset, yOffset, zOffset);
         ReprojectPoints(tempTarget, pt1, pt2, cameraMatrix1, cameraMatrix2, translation);
         circle(dst1, pt1, 10, Scalar(0, 0, 255));
         circle(dst2, pt2, 10, Scalar(0, 0, 255));
@@ -480,13 +482,13 @@ int main(int argc, char** argv)
         if (inRange)
         {
             if (PIDEnabled)
-                control.SendJointActuators(pid0.update(currAngles[0], -0.5), pid1.update(currAngles[1], 1.5),pid1.update(currAngles[2], 1.4));
+                control.SendJointActuators(pid0.update(currAngles[0], angles[0]), pid1.update(currAngles[1], angles[1]),pid1.update(currAngles[2], angles[2]));
         }
         else{
             cerr << "COULD NOT DETECT" << endl;
         }
         
-        record.writeValue(control.GetError(), destAngle, clock());
+        //record.writeValue(control.GetError(), destAngle, clock());
         
       
         Point3f basej = coords[1];
@@ -556,7 +558,7 @@ int main(int argc, char** argv)
         {
             //for(int j = 2; j < 3; j++)
             //{
-            ReprojectPoints(Point3f(-200 + i * 100, yOffset, -200 + j * 100), point1, point2, cameraMatrix1, cameraMatrix2, translation);
+            //ReprojectPoints(Point3f(-200 + i * 100, yOffset, -200 + j * 100), point1, point2, cameraMatrix1, cameraMatrix2, translation);
             Scalar pixel = Scalar(255 - i * 50, 255 - j * 50, 255);
             //drawPoints(dst1, dst2, point1, point2, pixel);
             //}
@@ -573,7 +575,7 @@ int main(int argc, char** argv)
         */
         
         while((clock()-beginTime) < intervalTime){};
-        cerr << "FPS: " << (clock()-beginTime) << endl;
+        //cerr << "FPS: " << (clock()-beginTime) << endl;
 
         
         char ch = waitKey(15);
@@ -581,6 +583,24 @@ int main(int argc, char** argv)
         if(ch == 'l')
         {
             control.CalculateLinkLengths(l0, l1, l2);
+        }
+        else if(ch == 'r')
+        {
+            control.GetError();
+        }
+        else if(ch == 't')
+        {
+            double yOffset = yOff * 100;
+            double xOffset = xOff * 100;
+            double zOffset = zOff * 100;
+            tempTarget = Point3f(xOffset, yOffset, zOffset);
+            control.SetTarget(tempTarget);
+            control.InitFuzzyController();
+        }
+        else if(ch == 'f')
+        {
+            control.UpdateArmPose(coords[3], pid0.GetLastError(), pid1.GetLastError(), pid2.GetLastError());
+            cerr << "FUZZY TARGET SET TO: " << control.GetFuzzyTarget() << endl;
         }
         else if(ch == 'e')
         {
@@ -647,10 +667,6 @@ int main(int argc, char** argv)
                 }
             }
             destroyAllWindows();
-        }
-        else if(ch == 'f')
-        {
-            //control.UpdateArm
         }
         else if(ch == '1')
         {
@@ -749,12 +765,11 @@ int main(int argc, char** argv)
         }
         else if(ch == 'a')
         {
-//            cerr << "PID enabled. Target : " << destAngle << endl;
-//            PIDEnabled = true;
-//            pid1.reset();
-//            pid0.reset();
-//            pid2.reset();
-            control.SendJointActuators(-130,-100,-40);
+            cerr << "PID enabled. Target : " << destAngle << endl;
+            PIDEnabled = true;
+            pid1.reset();
+            pid0.reset();
+            pid2.reset();
 
         }
         else if(ch == 'b')

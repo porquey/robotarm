@@ -4,6 +4,8 @@
 #include "SetBlobColour.h"
 #include <iostream>
 
+#define FILTER_NUMBER 5
+
 #ifndef _CRT_SECURE_NO_WARNINGS
 # define _CRT_SECURE_NO_WARNINGS
 #endif
@@ -11,7 +13,19 @@
 class BlobHueDetector
 {
 public:
+    class MovingAverageFilter
+    {
+    public:
+        MovingAverageFilter();
+        cv::Point2f Add(cv::Point2f p);
+        cv::Point2f Average();
+        void Init();
+    private:
+        cv::Point2f pointArray[FILTER_NUMBER];
+        int iterator;
+    };
     
+public:
     BlobHueDetector();
     
     bool GetBlobCentres(cv::Mat &src1, cv::Mat &src2, cv::KeyPoint &keypoint1, cv::KeyPoint &keypoint2);
@@ -34,5 +48,6 @@ private:
     
     std::vector<int> countVec;
     std::vector<cv::KeyPoint> offsetVec;
-    
+public:
+    MovingAverageFilter filter[2];
 };
