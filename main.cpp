@@ -250,6 +250,7 @@ int main(int argc, char** argv)
 
                 bool detected = detector[i].GetJointPos(imageVec, keypointVec);
                 
+                cerr << "Joint" << i << ": ";
                 Point3f coordTemp = Calculate3DPoint(keypointVec[0].pt, keypointVec[1].pt, cameraMatrix1, cameraMatrix2, translation);
                 coords.push_back(coordTemp);
                 detectedVec.push_back(detected);
@@ -476,9 +477,10 @@ int main(int argc, char** argv)
                 cerr << "JOINT " << i << "OUT OF RANGE: " << currAngles[i] << endl;
             }
         }
-        if (PIDEnabled && inRange)
+        if (inRange)
         {
-            control.SendJointActuators(pid0.update(currAngles[0], angles[0]), pid1.update(currAngles[1], angles[1]),pid1.update(currAngles[2], angles[2]));
+            if (PIDEnabled)
+                control.SendJointActuators(pid0.update(currAngles[0], -0.5), pid1.update(currAngles[1], 1.5),pid1.update(currAngles[2], 1.4));
         }
         else{
             cerr << "COULD NOT DETECT" << endl;
@@ -747,11 +749,13 @@ int main(int argc, char** argv)
         }
         else if(ch == 'a')
         {
-            cerr << "PID enabled. Target : " << destAngle << endl;
-            PIDEnabled = true;
-            pid1.reset();
-            pid0.reset();
-            pid2.reset();
+//            cerr << "PID enabled. Target : " << destAngle << endl;
+//            PIDEnabled = true;
+//            pid1.reset();
+//            pid0.reset();
+//            pid2.reset();
+            control.SendJointActuators(-130,-100,-40);
+
         }
         else if(ch == 'b')
         {
