@@ -28,7 +28,7 @@ void ReprojectPoints(Point3f pt, Point2f &pt1, Point2f &pt2, Mat &cameraMatrix1,
     pt1.y = -((pt.y) * fy1 - yTrans/2) / (pt.z + zTrans) + cy1;
     
     pt2.x = (pt.z * fx2) / (xTrans - pt.x) + cx2;
-    pt2.y = -((pt.y + yTrans/2) * fy2) / (xTrans - pt.x) + cy2;
+    pt2.y = -((pt.y) * fy2 + yTrans/2) / (xTrans - pt.x) + cy2;
     
 }
 

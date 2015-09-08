@@ -13,16 +13,22 @@ void GraphRecorder::open(char* s){
     fs.open(s,ios_base::out|ios_base::trunc);
 }
 
-void GraphRecorder::writeValue(double value, double target, double time){
+void GraphRecorder::writeValue(double value, double time){
 
     if (recording){
-        if (targetTime != 0 && (clock() - targetTime) > TEST_TIME){
+        if (time > endTime){
             recording = false;
             close();
         }
         else{
             fs << value << "\t" << time << endl;
         }
+    }
+}
+
+void GraphRecorder::writeValue(double value, int iteration){
+    if (recording){
+        fs << value << "\t" << iteration << endl;
     }
 }
 
@@ -33,8 +39,28 @@ void GraphRecorder::close(){
 }
 
 void GraphRecorder::start(char* s){
+    start(s, DEFAULT_TEST_TIME);
+}
+
+void GraphRecorder::start(char*s, double time){
     cerr << endl << endl << "RECORDING STARTED." << endl << endl;
     open(s);
     recording = true;
-    targetTime = clock();
+    startTime = clock();
+    endTime = startTime + time;
 }
+
+void RampValue::start(double ramp, double time){
+    rampValue = ramp;
+    totalTime = time;
+    startTime = clock();
+}
+
+double RampValue::getCurrentValue(){
+    double out = rampValue * (clock()-startTime)/totalTime;
+    if (out > rampValue)
+        return rampValue;
+    else
+        return out;
+}
+

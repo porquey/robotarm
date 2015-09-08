@@ -201,9 +201,13 @@ int main(int argc, char** argv)
     ControlArm::PIDControl pid1 = ControlArm::PIDControl();
     ControlArm::PIDControl pid2 = ControlArm::PIDControl();
     double destAngle = 0;
-    bool PIDEnabled = false;
+    bool rampEnabled = false;
+    bool pidEnabled = false;
     
     GraphRecorder record;
+    RampValue ramp;
+    
+    string fpsStr;
     
     while(inputCapture1.isOpened() && inputCapture2.isOpened())
     {
@@ -432,9 +436,10 @@ int main(int argc, char** argv)
         //beginTime = clock();
         
         
-        
-        int j = reprojectVal;
-        
+        double yOffset = yOff * 100;
+        double xOffset = xOff * 100;
+        double zOffset = zOff * 100;
+        tempTarget = Point3f(xOffset, yOffset, zOffset);
         
         /////CONTROL/////
         Point2f pt1, pt2;
@@ -451,6 +456,10 @@ int main(int argc, char** argv)
         
         static double currAngles[3];
         control.GetCurrentPose(currAngles);
+        
+        
+        control.UpdateArmPose(coords[3], pid0.GetLastError(), pid1.GetLastError(), pid2.GetLastError());
+
         
         string angleStr;
 
@@ -481,8 +490,16 @@ int main(int argc, char** argv)
         }
         if (inRange)
         {
-            if (PIDEnabled)
-                control.SendJointActuators(pid0.update(currAngles[0], angles[0]), pid1.update(currAngles[1], angles[1]),pid1.update(currAngles[2], angles[2]));
+            if (rampEnabled)
+            {
+                control.SendJointActuators(-60,-60,pid1.update(currAngles[2], (destAngle + ramp.getCurrentValue())));
+                cerr << "Ramp target: " << destAngle + ramp.getCurrentValue() << endl;
+                cerr << "Current angle:  " << currAngles[2] << endl;
+            }
+            else if (pidEnabled)
+                control.SendJointActuators(-60, -60, pid0.update(currAngles[2], destAngle));
+            else
+                control.SendJointActuators(0, 0, 0);
         }
         else{
             cerr << "COULD NOT DETECT" << endl;
@@ -493,18 +510,17 @@ int main(int argc, char** argv)
       
         Point3f basej = coords[1];
         
-        Point3f tempTemp = control.GetTarget();
+        Point3f tempTemp = control.GetFuzzyTarget();
         
         double tempAngle0, tempAngle1, tempAngle2;
-        if(tempTemp.z > coords[1].z)
+        if(tempTemp.z > coords[0].z)
         {
             tempAngle0 = angles[0] - PI;
-            
             if(tempAngle0 > PI)
             {
                 tempAngle0 -= 2 * PI;
             }
-            else if(tempAngle0 < PI)
+            else if(tempAngle0 < -PI)
             {
                 tempAngle0 += 2 * PI;
             }
@@ -514,15 +530,24 @@ int main(int argc, char** argv)
         else
         {
             tempAngle0 = angles[0];
+            if(tempAngle0 > PI)
+            {
+                tempAngle0 -= 2 * PI;
+            }
+            else if(tempAngle0 < -PI)
+            {
+                tempAngle0 += 2 * PI;
+            }
             tempAngle1 = angles[1];
             tempAngle2 = angles[2];
         }
         
+        //cerr << "a0:" << tempAngle0 << " a1:" << tempAngle1 <<" a2:" << tempAngle2 << endl;
         
         double height = l1 * sin(HALF_PI - tempAngle1);
         double width = l1 * cos(HALF_PI - tempAngle1);
         
-        Point3f jj1 = Point3f(sin(tempAngle0) * width + basej.x, height + basej.y, basej.z - cos(tempAngle0) * width);
+        Point3f jj1 = Point3f(basej.x - cos(tempAngle0) * width, height + basej.y, basej.z - sin(tempAngle0) * width);
         Draw3DPoint(basej, dst1, dst2);
         Draw3DPoint(jj1, dst1, dst2);
         Draw3DLine(basej, jj1, dst1, dst2);
@@ -531,51 +556,36 @@ int main(int argc, char** argv)
         Point3f baseVec = tempTemp - coords[0];
         baseVec.y = 0;
         
-        int d = FindAngleDirection(baseVec, coords[1] - coords[2], tempTemp - coords[2]);
+        int d = FindAngleDirection(baseVec, basej - jj1, tempTemp - jj1);
         
         double extraHeight = l2 * sin(HALF_PI - tempAngle1 + tempAngle2 * d);
         double extraWidth = l2 * cos(HALF_PI - tempAngle1 + tempAngle2 * d);
-        Point3f jj2 = Point3f(jj1.x + sin(tempAngle0) * extraWidth, jj1.y + extraHeight, jj1.z - cos(tempAngle0) * extraWidth);
+        Point3f jj2 = Point3f(jj1.x - cos(tempAngle0) * extraWidth, jj1.y + extraHeight, jj1.z - sin(tempAngle0) * extraWidth);
         Draw3DPoint(jj2, dst1, dst2);
         Draw3DLine(jj1, jj2, dst1, dst2);
-        
-//        
-//        string angleStr;
-//        angleStr = "J0 Curr Angle: " + to_string(currAngles[0]);
-//        putText(dst2, angleStr, Point(5, 15 * 1), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 255));
-//        angleStr = "J0 Dest Angle: " + to_string(destAngle);
-//        putText(dst2, angleStr, Point(5, 15 * 2), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 255));
-//        angleStr = "J0 Error: " + to_string(destAngle- currAngles[0]);
-//        putText(dst2, angleStr, Point(5, 15 * 3), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 255));
-
-        
         
         Point2f point1;
         Point2f point2;
         
         
-        for(int i = 0; i < 5; i++)
-        {
-            //for(int j = 2; j < 3; j++)
-            //{
-            //ReprojectPoints(Point3f(-200 + i * 100, yOffset, -200 + j * 100), point1, point2, cameraMatrix1, cameraMatrix2, translation);
-            Scalar pixel = Scalar(255 - i * 50, 255 - j * 50, 255);
-            //drawPoints(dst1, dst2, point1, point2, pixel);
-            //}
-        }
+//        for(int i = 0; i < 5; i++)
+//        {
+//            //for(int j = 2; j < 3; j++)
+//            //{
+//            //ReprojectPoints(Point3f(-200 + i * 100, yOffset, -200 + j * 100), point1, point2, cameraMatrix1, cameraMatrix2, translation);
+//            Scalar pixel = Scalar(255 - i * 50, 255 - j * 50, 255);
+//            //drawPoints(dst1, dst2, point1, point2, pixel);
+//            //}
+//        }
         
-        
+        putText(dst1, fpsStr, Point(5, 15 * 3), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 255));
+
         imshow("Camera2", dst2);
         imshow("Camera1", dst1);
         
-        /*
-        
-        sum3 += float(clock() - beginTime)/CLOCKS_PER_SEC;
-        beginTime = clock();
-        */
-        
         while((clock()-beginTime) < intervalTime){};
-        //cerr << "FPS: " << (clock()-beginTime) << endl;
+        fpsStr = "FPS: " + to_string(clock()-beginTime);
+//        cerr << fpsStr << endl;
 
         
         char ch = waitKey(15);
@@ -590,17 +600,12 @@ int main(int argc, char** argv)
         }
         else if(ch == 't')
         {
-            double yOffset = yOff * 100;
-            double xOffset = xOff * 100;
-            double zOffset = zOff * 100;
-            tempTarget = Point3f(xOffset, yOffset, zOffset);
             control.SetTarget(tempTarget);
             control.InitFuzzyController();
         }
         else if(ch == 'f')
         {
-            control.UpdateArmPose(coords[3], pid0.GetLastError(), pid1.GetLastError(), pid2.GetLastError());
-            cerr << "FUZZY TARGET SET TO: " << control.GetFuzzyTarget() << endl;
+            control.TerminateFuzzyController();
         }
         else if(ch == 'e')
         {
@@ -765,8 +770,9 @@ int main(int argc, char** argv)
         }
         else if(ch == 'a')
         {
+            destAngle = 0.3;
             cerr << "PID enabled. Target : " << destAngle << endl;
-            PIDEnabled = true;
+            pidEnabled = true;
             pid1.reset();
             pid0.reset();
             pid2.reset();
@@ -774,8 +780,9 @@ int main(int argc, char** argv)
         }
         else if(ch == 'b')
         {
-            cerr << "PID disabled" << endl;
-            PIDEnabled = false;
+            cerr << "Ramp and PID disabled" << endl;
+            pidEnabled = false;
+            rampEnabled = false;
             control.SendJointActuators(0,0,0);
 //            cerr << "PID enabled. Target : " << destAngle << endl;
 //            destAngle = -1.5;
@@ -786,11 +793,13 @@ int main(int argc, char** argv)
         }
         else if (ch == 's')
         {
-            PIDEnabled = true;
+            ramp.start(HALF_PI, 15000000);
+            cerr << "Ramp started" << destAngle << endl;
+            rampEnabled = true;
             pid1.reset();
             pid0.reset();
             pid2.reset();
-            record.start("inversekinematics.txt");
+            //record.start("PIStep.txt");
         }
         
         fcount++;

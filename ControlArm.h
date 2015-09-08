@@ -67,6 +67,7 @@ public:
     void IncrementIteration();
     double GetError();
     void InitFuzzyController();
+    void TerminateFuzzyController();
     
 protected:
     void FindInverseKinematics();

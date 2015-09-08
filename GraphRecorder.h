@@ -15,22 +15,40 @@
 #include <fstream>
 #include <cmath>
 
-#define TEST_TIME 20000000
+#define DEFAULT_TEST_TIME 20000000
 
 using namespace std;
 
 class GraphRecorder
 {
 public:
-    void writeValue(double value, double target, double time);
+    void writeValue(double value, double time);
+    void writeValue(double value, int iteration);
+    void updateTarget();
     void open(char* s);
     void close();
     void start(char* s);
+    void start(char* s, double time);
+    void start(char* s, double variation, double time);
+
     
 private:
     bool recording;
-    double targetTime;
+    double startTime;
+    double endTime;
     ofstream fs;
+};
+
+class RampValue
+{
+public:
+    void start(double ramp, double time);
+    double getCurrentValue();
+
+private:
+    double totalTime;
+    double startTime;
+    double rampValue;
 };
 
 
