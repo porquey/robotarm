@@ -195,6 +195,7 @@ int main(int argc, char** argv)
 
     clock_t beginTime = clock();
     clock_t intervalTime = 100000;
+    clock_t startTime = 0;
     //int frames = 0;
     ControlArm control(LINK0, LINK1, LINK2);
     ControlArm::PIDControl pid0 = ControlArm::PIDControl();
@@ -204,8 +205,8 @@ int main(int argc, char** argv)
     bool rampEnabled = false;
     bool pidEnabled = false;
     
-    GraphRecorder record;
-    RampValue ramp;
+    GraphRecorder recorder1,recorder2,recorder3,recorder4,recorder5;
+    RampValue ramp1, ramp2, ramp3;
     
     string fpsStr;
     
@@ -436,11 +437,6 @@ int main(int argc, char** argv)
         //beginTime = clock();
         
         
-        double yOffset = yOff * 100;
-        double xOffset = xOff * 100;
-        double zOffset = zOff * 100;
-        tempTarget = Point3f(xOffset, yOffset, zOffset);
-        
         /////CONTROL/////
         Point2f pt1, pt2;
         ReprojectPoints(tempTarget, pt1, pt2, cameraMatrix1, cameraMatrix2, translation);
@@ -488,24 +484,52 @@ int main(int argc, char** argv)
                 cerr << "JOINT " << i << "OUT OF RANGE: " << currAngles[i] << endl;
             }
         }
+        static bool hacky = false;
+        static bool starty = false;
         if (inRange)
         {
-            if (rampEnabled)
+            if(hacky)
             {
-                control.SendJointActuators(-60,-60,pid1.update(currAngles[2], (destAngle + ramp.getCurrentValue())));
-                cerr << "Ramp target: " << destAngle + ramp.getCurrentValue() << endl;
-                cerr << "Current angle:  " << currAngles[2] << endl;
+                if(!starty)
+                {
+                    yOff = -2;
+                    xOff = 2;
+                    zOff = -2;
+                    double yOffset = yOff * 100;
+                    double xOffset = xOff * 100;
+                    double zOffset = zOff * 100;
+                    tempTarget = Point3f(xOffset, yOffset, zOffset);
+                    control.SetTarget(tempTarget);
+                }
+                else
+                {
+                    double yOffset = yOff * 100;
+                    double xOffset = xOff * 100;
+                    double zOffset = zOff * 100;
+                    tempTarget = Point3f(xOffset, yOffset + ramp2.getCurrentValue(), zOffset + ramp1.getCurrentValue());
+                    control.SetTarget(tempTarget);
+                    
+                }
+                control.SendJointActuators(pid0.update(currAngles[0], angles[0]),pid1.update(currAngles[1], angles[1]), pid2.update(currAngles[2], angles[2]));
             }
-            else if (pidEnabled)
-                control.SendJointActuators(-60, -60, pid0.update(currAngles[2], destAngle));
             else
-                control.SendJointActuators(0, 0, 0);
+            {
+                control.SendJointActuators(0,pid1.update(currAngles[1], 0), pid2.update(currAngles[2], 0));
+            }
+
         }
         else{
             cerr << "COULD NOT DETECT" << endl;
+            control.SendJointActuators(0, 0, 0);
         }
         
-        //record.writeValue(control.GetError(), destAngle, clock());
+        recorder1.writeValue(tempTarget.x, coords[3].x, (double)clock());
+        recorder2.writeValue(tempTarget.y, coords[3].y, (double)clock());
+        recorder3.writeValue(tempTarget.z, coords[3].z, (double)clock());
+        recorder4.writeValue(CalculateLength(tempTarget - coords[3]), (double)clock());
+        recorder5.writeValue(CalculateLength(control.GetFuzzyTarget() - coords[3]), (double)clock());
+
+
         
       
         Point3f basej = coords[1];
@@ -515,7 +539,8 @@ int main(int argc, char** argv)
         double tempAngle0, tempAngle1, tempAngle2;
         if(tempTemp.z > coords[0].z)
         {
-            tempAngle0 = angles[0] - PI;
+            tempAngle0 = angles[0];
+            /*tempAngle0 = angles[0] - PI;
             if(tempAngle0 > PI)
             {
                 tempAngle0 -= 2 * PI;
@@ -523,21 +548,13 @@ int main(int argc, char** argv)
             else if(tempAngle0 < -PI)
             {
                 tempAngle0 += 2 * PI;
-            }
+            }*/
             tempAngle1 = -angles[1];
             tempAngle2 = -angles[2];
         }
         else
         {
             tempAngle0 = angles[0];
-            if(tempAngle0 > PI)
-            {
-                tempAngle0 -= 2 * PI;
-            }
-            else if(tempAngle0 < -PI)
-            {
-                tempAngle0 += 2 * PI;
-            }
             tempAngle1 = angles[1];
             tempAngle2 = angles[2];
         }
@@ -589,7 +606,6 @@ int main(int argc, char** argv)
 
         
         char ch = waitKey(15);
-        //cerr << "wait key: " << ch << endl;
         if(ch == 'l')
         {
             control.CalculateLinkLengths(l0, l1, l2);
@@ -602,6 +618,11 @@ int main(int argc, char** argv)
         {
             control.SetTarget(tempTarget);
             control.InitFuzzyController();
+        }
+        else if(ch == 'h')
+        {
+            control.InitFuzzyController();
+            hacky = true;
         }
         else if(ch == 'f')
         {
@@ -675,12 +696,13 @@ int main(int argc, char** argv)
         }
         else if(ch == '1')
         {
-            pid1.reset();
-            pid0.reset();
-            pid2.reset();
-            xOff = 0;
-            yOff = 0;
-            zOff = 0;
+            yOff = -2;
+            xOff = 2;
+            zOff = -2;
+            double yOffset = yOff * 100;
+            double xOffset = xOff * 100;
+            double zOffset = zOff * 100;
+            tempTarget = Point3f(xOffset, yOffset, zOffset);
         }
         else if(ch == '2')
         {
@@ -770,13 +792,13 @@ int main(int argc, char** argv)
         }
         else if(ch == 'a')
         {
-            destAngle = 0.3;
+            destAngle = 0;
             cerr << "PID enabled. Target : " << destAngle << endl;
             pidEnabled = true;
             pid1.reset();
             pid0.reset();
             pid2.reset();
-
+            pidEnabled = true;
         }
         else if(ch == 'b')
         {
@@ -793,13 +815,23 @@ int main(int argc, char** argv)
         }
         else if (ch == 's')
         {
-            ramp.start(HALF_PI, 15000000);
-            cerr << "Ramp started" << destAngle << endl;
-            rampEnabled = true;
-            pid1.reset();
-            pid0.reset();
-            pid2.reset();
-            //record.start("PIStep.txt");
+            //ramp.start(HALF_PI, 15000000, 5000000);
+            starty = true;
+            control.InitFuzzyController();
+
+            cerr << "Step started" << destAngle << endl;
+            startTime = clock();
+            recorder1.start("x.txt", 40000000);
+            recorder2.start("y.txt", 40000000);
+            recorder3.start("z.txt", 40000000);
+            recorder4.start("err.txt", 45000000);
+            recorder5.start("fuzz_err.txt", 45000000);
+            
+            ramp1.start(400, 8000000, 5000000);
+            ramp2.start(200, 8000000, 5000000);
+            ramp3.start(400, 8000000, 5000000);
+
+
         }
         
         fcount++;

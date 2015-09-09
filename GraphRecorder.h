@@ -24,6 +24,7 @@ class GraphRecorder
 public:
     void writeValue(double value, double time);
     void writeValue(double value, int iteration);
+    void writeValue(double value, double target, double time);
     void updateTarget();
     void open(char* s);
     void close();
@@ -43,6 +44,7 @@ class RampValue
 {
 public:
     void start(double ramp, double time);
+    void start(double ramp, double time, double delay);
     double getCurrentValue();
 
 private:

@@ -78,10 +78,13 @@ private:
     double link0, link1, link2;
     Point3f jointPositions[4];
     double jointAngles[3];
+    double lastJointAngles[3];
+    double jointOffsets[3];
     double currentAngles[3];
     Point3f targetPosition;
     Point3f fuzzyTarget;
     vector<FuzzyRule> fuzzySet;
     int it;
     bool startFuzzy;
+    Point3f targetLast;
 };
