@@ -368,7 +368,7 @@ void ControlArm::InitFuzzyController()
     it = 0;
     startFuzzy = true;
     fuzzySet.clear();
-    fuzzySet.push_back(FuzzyRule(Point3f(-100000, -100000, -100000), Point3f(-5, -5, -5), Point3f(-2.5, -2.5, -2.5), Point3f(-1.5, -1.5, -1.5)));
+    fuzzySet.push_back(FuzzyRule(Point3f(-100000, -100000, -100000), Point3f(-10, -10, -10), Point3f(-5, -5, -5), Point3f(-1.5, -1.5, -1.5)));
     fuzzySet.push_back(FuzzyRule(Point3f(-10, -10, -10), Point3f(-5, -5, -5), Point3f(0, 0, 0), Point3f(-0.4, -0.4, -0.4)));
     fuzzySet.push_back(FuzzyRule(Point3f(-5, -5, -5), Point3f(0, 0, 0), Point3f(5, 5, 5), Point3f(0, 0, 0)));
     fuzzySet.push_back(FuzzyRule(Point3f(0, 0, 0), Point3f(5, 5, 5), Point3f(10, 10, 10), Point3f(0.4, 0.4, 0.4)));

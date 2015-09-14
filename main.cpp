@@ -828,8 +828,8 @@ int main(int argc, char** argv)
             recorder5.start("fuzz_err.txt", 45000000);
             
             ramp1.start(400, 8000000, 5000000);
-            ramp2.start(200, 8000000, 5000000);
-            ramp3.start(400, 8000000, 5000000);
+            ramp2.start(000, 8000000, 5000000);
+            ramp3.start(000, 8000000, 5000000);
 
 
         }
