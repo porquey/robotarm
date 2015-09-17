@@ -4,7 +4,7 @@
 #include "SetBlobColour.h"
 #include <iostream>
 
-#define FILTER_NUMBER 5
+#define FILTER_NUMBER 3
 
 #ifndef _CRT_SECURE_NO_WARNINGS
 # define _CRT_SECURE_NO_WARNINGS

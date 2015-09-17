@@ -34,8 +34,10 @@ int ControlArm::PIDControl::update(double value, double dest)
     double derivative = error - lastError;
     
     lastError = error;
+    integral+= error;
+
     
-    double out = (error * Kp + integral * Ki + derivative + Kd + 0.5);
+    double out = (error * Kp + derivative + Kd + 0.5);
     
     //cerr << "Error: " << error << endl;
         
@@ -46,7 +48,6 @@ int ControlArm::PIDControl::update(double value, double dest)
         return -(int)MAX_ERROR;
     }
     else{
-        integral+= error;
         return (int)out;
     }
 }
@@ -139,21 +140,25 @@ void ControlArm::GetCurrentPose(double *angles)
     lastJointAngles[0] = currentAngles[0];
     lastJointAngles[1] = currentAngles[1];
     lastJointAngles[2] = currentAngles[2];
+    
+    angles[0] = currentAngles[0];
+    angles[1] = currentAngles[1];
+    angles[2] = currentAngles[2];
 
-
-    //Reduce angle with the offset
-    if (currentAngles[0] > 0)
-        angles[0] = currentAngles[0] - jointOffsets[0];
-    else
-        angles[0] = currentAngles[0] + jointOffsets[0];
-    if (currentAngles[1] > 0)
-        angles[1] = currentAngles[1] - jointOffsets[1];
-    else
-        angles[1] = currentAngles[1] + jointOffsets[1];
-    if (currentAngles[2] > 0)
-        angles[2] = currentAngles[2] - jointOffsets[2];
-    else
-        angles[2] = currentAngles[2] + jointOffsets[2];
+//
+//    //Reduce angle with the offset
+//    if (currentAngles[0] > 0)
+//        angles[0] = currentAngles[0] - jointOffsets[0];
+//    else
+//        angles[0] = currentAngles[0] + jointOffsets[0];
+//    if (currentAngles[1] > 0)
+//        angles[1] = currentAngles[1] - jointOffsets[1];
+//    else
+//        angles[1] = currentAngles[1] + jointOffsets[1];
+//    if (currentAngles[2] > 0)
+//        angles[2] = currentAngles[2] - jointOffsets[2];
+//    else
+//        angles[2] = currentAngles[2] + jointOffsets[2];
 }
 
 void ControlArm::SetTarget(Point3f target)
@@ -165,10 +170,11 @@ void ControlArm::SetTarget(Point3f target)
     {
         Point3f pointDiff = targetPosition - jointPositions[1];
         double absDiff = CalculateLength(pointDiff);
-        
-        targetPosition.x = (int)(pointDiff.x / absDiff) * (link1 + link2 - 1);
-        targetPosition.y = (int)(pointDiff.y / absDiff) * (link1 + link2 - 1);
-        targetPosition.z = (int)(pointDiff.z / absDiff) * (link1 + link2 - 1);
+        cerr << " link1: " << link1 << " link2: " << link2 << " absDiff: " << absDiff << endl;
+        targetPosition.x = (pointDiff.x / absDiff) * (link1 + link2);
+        targetPosition.y = (pointDiff.y / absDiff) * (link1 + link2);
+        targetPosition.z = (pointDiff.z / absDiff) * (link1 + link2);
+        cerr << "Final distance: " << CalculateLength(targetPosition) << endl;
         targetPosition = targetPosition + jointPositions[1];
         
         //cerr << "OUT OF REACH. NEW TARGET: " << targetPosition.x << " " << targetPosition.y << " " << targetPosition.z << endl;
@@ -188,9 +194,9 @@ void ControlArm::SetFuzzyTarget(Point3f target)
         Point3f pointDiff = fuzzyTarget - jointPositions[1];
         double absDiff = CalculateLength(pointDiff);
         
-        fuzzyTarget.x = (int)(pointDiff.x / absDiff) * (link1 + link2 - 1);
-        fuzzyTarget.y = (int)(pointDiff.y / absDiff) * (link1 + link2 - 1);
-        fuzzyTarget.z = (int)(pointDiff.z / absDiff) * (link1 + link2 - 1);
+        fuzzyTarget.x = (int)(pointDiff.x / absDiff) * (link1 + link2);
+        fuzzyTarget.y = (int)(pointDiff.y / absDiff) * (link1 + link2);
+        fuzzyTarget.z = (int)(pointDiff.z / absDiff) * (link1 + link2);
         fuzzyTarget = fuzzyTarget + jointPositions[1];
         
         //cerr << "OUT OF REACH. NEW TARGET: " << targetPosition.x << " " << targetPosition.y << " " << targetPosition.z << endl;
@@ -219,14 +225,6 @@ Point3f ControlArm::GetFuzzyTarget()
 bool ControlArm::UpdateArmPose(Point3f detected, double error0, double error1, double error2)
 {
     
-    if(CalculateLength(fuzzyTarget - targetPosition) > 50 && CalculateLength(targetLast - targetPosition) > 20)
-    {
-        fuzzyTarget = targetPosition;
-    }
-    if(CalculateLength(targetLast - targetPosition) > 20)
-    {
-        targetLast = targetPosition;
-    }
     if(startFuzzy)
     {
         double e = CalculateLength(CalculateVector(jointPositions[3], targetPosition));
@@ -247,7 +245,20 @@ bool ControlArm::UpdateArmPose(Point3f detected, double error0, double error1, d
             k = 0.1;
             cerr << "K" << endl;
         }
-        
+    }
+    if(CalculateLength(fuzzyTarget - targetPosition) > 10 && CalculateLength(targetLast - targetPosition) > 1)
+    {
+        fuzzyTarget = targetPosition;
+        targetLast = targetPosition;
+        return false;
+    }
+    if(CalculateLength(targetLast - targetPosition) > 1)
+    {
+        targetLast = targetPosition;
+    }
+    
+    if(startFuzzy)
+    {
         if(CalculateLength(jointPositions[3] - targetPosition) < 5)
         {
             cerr << "Reached distance of " << CalculateLength(jointPositions[3] - targetPosition) << " from target" << endl;

@@ -20,9 +20,6 @@
 # define _CRT_SECURE_NO_WARNINGS
 #endif
 
-#define HALF_POINT_X 319.5
-#define HALF_POINT_Y 239.5
-
 #define CAMERA1 1
 #define CAMERA2 2
 
@@ -45,6 +42,8 @@ int reprojectVal = 0, yOff = 0, xOff = 0, zOff = 0;
 
 bool checkBlobs = true;
 bool targetExists = false;
+bool targetToggle = false;
+Point3f targetCoord;
 
 Mat cameraMatrix1, cameraMatrix2, mapX1, mapY1, mapX2, mapY2, translation;
 
@@ -52,8 +51,8 @@ double l0 = LINK0, l1 = LINK1, l2 = LINK2;
 
 void drawPoints(Mat &img1, Mat &img2, Point2f pt1, Point2f pt2, Scalar colour)
 {
-    circle(img1, pt1, 5, colour);//Scalar(r, g, b));
-    circle(img2, pt2, 5, colour);//Scalar(r, g, b));
+    circle(img1, pt1, 10, colour);//Scalar(r, g, b));
+    circle(img2, pt2, 10, colour);//Scalar(r, g, b));
 }
 
 
@@ -62,8 +61,8 @@ void Draw3DPoint(Point3f pt, Mat &dst1, Mat &dst2)
     Point2f a, b;
     ReprojectPoints(pt, a, b, cameraMatrix1, cameraMatrix2, translation);
     
-    circle(dst1, a, 5, Scalar(255, 255, 0));
-    circle(dst2, b, 5, Scalar(255, 255, 0));
+    circle(dst1, a, 8, Scalar(255, 255, 0), 2);
+    circle(dst2, b, 8, Scalar(255, 255, 0), 2);
 }
 
 void Draw3DLine(Point3f pt1, Point3f pt2, Mat &dst1, Mat &dst2)
@@ -72,8 +71,8 @@ void Draw3DLine(Point3f pt1, Point3f pt2, Mat &dst1, Mat &dst2)
     ReprojectPoints(pt1, a1, b1, cameraMatrix1, cameraMatrix2, translation);
     ReprojectPoints(pt2, a2, b2, cameraMatrix1, cameraMatrix2, translation);
     
-    line(dst1, a1, a2, Scalar(255, 255, 0));
-    line(dst2, b1, b2, Scalar(255, 255, 0));
+    line(dst1, a1, a2, Scalar(255, 255, 0), 2);
+    line(dst2, b1, b2, Scalar(255, 255, 0), 2);
 }
 
 
@@ -204,6 +203,7 @@ int main(int argc, char** argv)
     double destAngle = 0;
     bool rampEnabled = false;
     bool pidEnabled = false;
+    bool delayPassed = false;
     
     GraphRecorder recorder1,recorder2,recorder3,recorder4,recorder5;
     RampValue ramp1, ramp2, ramp3;
@@ -420,16 +420,20 @@ int main(int argc, char** argv)
         KeyPoint keypoint1, keypoint2;
         if(targetExists)
         {
+            vector<KeyPoint> targetVec1, targetVec2;
             targetDetector.GetBlobCentres(image1, image2, keypoint1, keypoint2);
+            targetCoord = Calculate3DPoint(keypoint1.pt, keypoint2.pt, cameraMatrix1, cameraMatrix2, translation);
+            targetVec1.push_back(keypoint1);
+            targetVec2.push_back(keypoint2);
             
-            Point3f targetCoord = Calculate3DPoint(keypoint1.pt, keypoint2.pt, cameraMatrix1, cameraMatrix2, translation);
+            //circle(dst1, keypoint1.pt, 5, Scalar(0, 255, 255));
+            //circle(dst2, keypoint2.pt, 5, Scalar(0, 255, 255));
             
-            circle(dst1, keypoint1.pt, 5, Scalar(0, 255, 255));
-            circle(dst2, keypoint2.pt, 5, Scalar(0, 255, 255));
+            cv::drawKeypoints(dst1, targetVec1, dst1, cv::Scalar(255, 255, 255), cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
+            cv::drawKeypoints(dst2, targetVec2, dst2, cv::Scalar(255, 255, 255), cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
+            
             string posStr = "X: " + to_string(targetCoord.x) + "  Y: " + to_string(targetCoord.y) + "  Z: " + to_string(targetCoord.z);
             //putText(dst1, posStr, Point(5, 15 * 5), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 255));
-            
-            
         }
    
         //cerr << "Blob detection: " << float(clock() - beginTime)/CLOCKS_PER_SEC << endl;
@@ -440,16 +444,22 @@ int main(int argc, char** argv)
         /////CONTROL/////
         Point2f pt1, pt2;
         ReprojectPoints(tempTarget, pt1, pt2, cameraMatrix1, cameraMatrix2, translation);
-        circle(dst1, pt1, 10, Scalar(0, 0, 255));
-        circle(dst2, pt2, 10, Scalar(0, 0, 255));
+        circle(dst1, pt1, 10, Scalar(255, 255, 255), 2);
+        circle(dst2, pt2, 10, Scalar(255, 255, 255), 2);
         string posStr = "TARGET X: " + to_string(tempTarget.x) + "  Y: " + to_string(tempTarget.y) + "  Z: " + to_string(tempTarget.z);
         putText(dst1, posStr, Point(5, 15 * 1), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 255));
         posStr = "END EFFECTOR X: " + to_string(coords[3].x) + "  Y: " + to_string(coords[3].y) + "  Z: " + to_string(coords[3].z);
         putText(dst1, posStr, Point(5, 15 * 2), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 255));
         //cerr << base << " " << joint1 << " " << joint2 << " " << tip << endl;
         control.SetArmPose(coords);
-        control.SetTarget(tempTarget);
-        
+        if(targetExists && targetToggle)
+        {
+            control.SetTarget(targetCoord);
+        }
+        else
+        {
+            control.SetTarget(tempTarget);
+        }
         static double currAngles[3];
         control.GetCurrentPose(currAngles);
         
@@ -492,22 +502,36 @@ int main(int argc, char** argv)
             {
                 if(!starty)
                 {
-                    yOff = -2;
-                    xOff = 2;
-                    zOff = -2;
-                    double yOffset = yOff * 100;
-                    double xOffset = xOff * 100;
-                    double zOffset = zOff * 100;
-                    tempTarget = Point3f(xOffset, yOffset, zOffset);
-                    control.SetTarget(tempTarget);
+                    if(targetExists && targetToggle)
+                    {
+                        control.SetTarget(targetCoord);
+                    }
+                    else
+                    {
+                        yOff = -2;
+                        xOff = -2;
+                        zOff = -2;
+                        double yOffset = yOff * 100;
+                        double xOffset = xOff * 100;
+                        double zOffset = zOff * 100;
+                        tempTarget = Point3f(xOffset, yOffset, zOffset);
+                        control.SetTarget(tempTarget);
+                    }
                 }
                 else
                 {
-                    double yOffset = yOff * 100;
-                    double xOffset = xOff * 100;
-                    double zOffset = zOff * 100;
-                    tempTarget = Point3f(xOffset, yOffset + ramp2.getCurrentValue(), zOffset + ramp1.getCurrentValue());
-                    control.SetTarget(tempTarget);
+                    if(targetExists && targetToggle)
+                    {
+                        control.SetTarget(targetCoord);
+                    }
+                    else
+                    {
+                        double yOffset = yOff * 100;
+                        double xOffset = xOff * 100;
+                        double zOffset = zOff * 100;
+                        tempTarget = Point3f(xOffset + ramp1.getCurrentValue(), yOffset + ramp2.getCurrentValue(), zOffset);// + ramp3.getCurrentValue());
+                        control.SetTarget(tempTarget);
+                    }
                     
                 }
                 control.SendJointActuators(pid0.update(currAngles[0], angles[0]),pid1.update(currAngles[1], angles[1]), pid2.update(currAngles[2], angles[2]));
@@ -516,7 +540,6 @@ int main(int argc, char** argv)
             {
                 control.SendJointActuators(0,pid1.update(currAngles[1], 0), pid2.update(currAngles[2], 0));
             }
-
         }
         else{
             cerr << "COULD NOT DETECT" << endl;
@@ -528,6 +551,7 @@ int main(int argc, char** argv)
         recorder3.writeValue(tempTarget.z, coords[3].z, (double)clock());
         recorder4.writeValue(CalculateLength(tempTarget - coords[3]), (double)clock());
         recorder5.writeValue(CalculateLength(control.GetFuzzyTarget() - coords[3]), (double)clock());
+        
 
 
         
@@ -603,6 +627,10 @@ int main(int argc, char** argv)
         while((clock()-beginTime) < intervalTime){};
         fpsStr = "FPS: " + to_string(clock()-beginTime);
 //        cerr << fpsStr << endl;
+        
+        if ((clock() - startTime) > 5000000 && startTime != 0){
+            delayPassed = true;
+        }
 
         
         char ch = waitKey(15);
@@ -616,8 +644,7 @@ int main(int argc, char** argv)
         }
         else if(ch == 't')
         {
-            control.SetTarget(tempTarget);
-            control.InitFuzzyController();
+            targetToggle = !targetToggle;
         }
         else if(ch == 'h')
         {
@@ -792,13 +819,13 @@ int main(int argc, char** argv)
         }
         else if(ch == 'a')
         {
-            destAngle = 0;
+            destAngle = 0.3;
             cerr << "PID enabled. Target : " << destAngle << endl;
-            pidEnabled = true;
             pid1.reset();
             pid0.reset();
             pid2.reset();
             pidEnabled = true;
+            delayPassed = false;
         }
         else if(ch == 'b')
         {
@@ -817,7 +844,7 @@ int main(int argc, char** argv)
         {
             //ramp.start(HALF_PI, 15000000, 5000000);
             starty = true;
-            control.InitFuzzyController();
+            //control.InitFuzzyController();
 
             cerr << "Step started" << destAngle << endl;
             startTime = clock();
@@ -828,9 +855,8 @@ int main(int argc, char** argv)
             recorder5.start("fuzz_err.txt", 45000000);
             
             ramp1.start(400, 8000000, 5000000);
-            ramp2.start(200, 8000000, 5000000);
+            ramp2.start(100, 8000000, 5000000);
             ramp3.start(400, 8000000, 5000000);
-
 
         }
         

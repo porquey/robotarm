@@ -81,7 +81,7 @@ void BlobHueDetector::SetDefaultHSVRanges()
 bool BlobHueDetector::GetBlobCentres(cv::Mat &src1, cv::Mat &src2, cv::KeyPoint &keypoint1, cv::KeyPoint &keypoint2)
 {
     bool detected1 = false, detected2 = false;
-    cv::Rect roi1, roi2;
+    /*cv::Rect roi1, roi2;
     if(counter1 < 5)
     {
         int x = last1.pt.x - 50;
@@ -121,14 +121,14 @@ bool BlobHueDetector::GetBlobCentres(cv::Mat &src1, cv::Mat &src2, cv::KeyPoint 
         }
     }
     else
-    {
+    {*/
         detected1 = GetBlob(src1, keypoint1);
         if(detected1)
         {
             counter1 = 0;
             last1 = keypoint1;
         }
-    }
+    /*}
     
     if(counter2 < 5)
     {
@@ -169,14 +169,14 @@ bool BlobHueDetector::GetBlobCentres(cv::Mat &src1, cv::Mat &src2, cv::KeyPoint 
         }
     }
     else
-    {
+    {*/
         detected2 = GetBlob(src2, keypoint2);
         if(detected2)
         {
             counter2 = 0;
             last2 = keypoint2;
         }
-    }
+    //}
     if(!detected1 || !detected2)
     {
         keypoint1 = last1;
