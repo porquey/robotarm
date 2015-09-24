@@ -3,12 +3,15 @@
 
 using namespace cv;
 
+/// BetterBlobDetector constructor
 BetterBlobDetector::BetterBlobDetector(const SimpleBlobDetector::Params &parameters):
 params(parameters)
 {
     
 }
 
+/// findBlobs
+/// finds the blobs in an image and extracts the centres and contours
 void BetterBlobDetector::findBlobs(const cv::Mat &image, const cv::Mat &binaryImage,
                                    vector<Center> &centers, std::vector < std::vector<cv::Point> >&curContours) const
 {
@@ -105,14 +108,18 @@ void BetterBlobDetector::findBlobs(const cv::Mat &image, const cv::Mat &binaryIm
     }
 }
 
+// contours
 static std::vector < std::vector<cv::Point> > _contours;
 
+/// getContours
+/// returns the contours
 const std::vector < std::vector<cv::Point> > BetterBlobDetector::getContours()
 {
     return _contours;
 }
 
-
+/// getBlobData
+/// returns the blob parameters for a blob of particular index
 void BetterBlobDetector::getBlobData(size_t idx, double &area, double &circularity, double &inertia, double &perimeter, double &convexity)
 {
     
@@ -148,6 +155,9 @@ void BetterBlobDetector::getBlobData(size_t idx, double &area, double &circulari
     convexity = contArea / hullArea;
 }
 
+/// detectImpl
+/// performs blob detection on an image using findBlobs function and produces a vector
+/// of keypoints
 void BetterBlobDetector::detectImpl(const cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, const cv::Mat&) const
 {
     _contours.clear();

@@ -1,11 +1,3 @@
-//
-//  GraphRecorder.h
-//  robotarm
-//
-//  Created by Forest Fraser on 5/09/15.
-//  Copyright (c) 2015 UoA. All rights reserved.
-//
-
 #ifndef __robotarm__GraphRecorder__
 #define __robotarm__GraphRecorder__
 
@@ -19,32 +11,30 @@
 
 using namespace std;
 
+/// GraphRecorder class assists in recording values for a fixed amount of time
+//NOTE: Does not record time, time must be passed as one of the values
 class GraphRecorder
 {
 public:
-    void writeValue(double value, double time);
-    void writeValue(double value, int iteration);
-    void writeValue(double value, double target, double time);
-    void updateTarget();
-    void open(char* s);
+    enum RecorderState {RECORDING, STOPPED};
+    void writeValue(double a, double b);
+    void writeValue(double a, double b, double c);
+    void start(string s);
+    void start(string s, clock_t time);
+    void open(string s);
     void close();
-    void start(char* s);
-    void start(char* s, double time);
-    void start(char* s, double variation, double time);
-
-    
 private:
-    bool recording;
-    double startTime;
-    double endTime;
+    RecorderState state;
+    clock_t endTime;
     ofstream fs;
 };
 
+/// RampValue class increments a value linearly with time
 class RampValue
 {
 public:
-    void start(double ramp, double time);
-    void start(double ramp, double time, double delay);
+    void start(double ramp, clock_t time);
+    void start(double ramp, clock_t time, clock_t delay);
     double getCurrentValue();
 
 private:
@@ -53,5 +43,4 @@ private:
     double rampValue;
 };
 
-
-#endif /* defined(__robotarm__GraphRecorder__) */
+#endif

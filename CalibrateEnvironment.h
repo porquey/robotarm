@@ -21,6 +21,7 @@ using namespace std;
 #define BOARD_HEIGHT 6
 #define ITERATIONS 10
 
+//Holds all information about the physical chessboard used
 class BoardSettings{
 public:
     int cornerNum;
@@ -28,7 +29,7 @@ public:
     Size boardSize;
 };
 
-bool RetrieveChessboardCorners(BoardSettings s, vector<vector<Point2f> >& imagePoints1, vector<vector<Point2f> >& imagePoints2, VideoCapture videoFeed1, VideoCapture videoFeed2, int iterations, bool remap, Mat mapX1, Mat mapY1, Mat mapX2, Mat mapY2);
+bool RetrieveChessboardCorners(vector<vector<Point2f> >& imagePoints1, vector<vector<Point2f> >& imagePoints2, BoardSettings s, VideoCapture inputCapture1, VideoCapture inputCapture2, int iterations);
 
 void CalcBoardCornerPositions(Size boardSize, float squareSize, vector<Point3f>& corners);
 

@@ -28,8 +28,6 @@
 #define LINK2 185
 
 
-
-
 using namespace cv;
 using namespace std;
 

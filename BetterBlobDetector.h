@@ -1,6 +1,9 @@
 #include <opencv2/opencv.hpp>
 #include <iterator>
 
+/// BetterBlobDetector class extends the OpenCV SimpleBlobDetector class with access to its
+/// inner private functions and variables
+/// mainly used to extract contours and blob parameters
 class BetterBlobDetector : public cv::SimpleBlobDetector
 {
 public:

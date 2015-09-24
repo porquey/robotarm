@@ -11,11 +11,11 @@
 using namespace cv;
 using namespace std;
 
-// reprojects 3D points back to a set of 2D points on the images
+// reprojects 3D points back to a set of 2D points
 void ReprojectPoints(Point3f pt, Point2f &pt1, Point2f &pt2, Mat &cameraMatrix1, Mat &cameraMatrix2, Mat &translation);
 // calculates the 3D point for a given set of 2D points
 Point3f Calculate3DPoint(Point2f pt1, Point2f pt2, Mat &cameraMatrix1, Mat &cameraMatrix2, Mat &translation);
-// calculates the distance between 2 points
+// calculates the distance between 2 2D points
 double CalculateDisplacement(Point a, Point b);
 // calculate the angle between 2 vectors
 double CalculateAngle(Point3f a, Point3f b);
