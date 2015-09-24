@@ -4,6 +4,7 @@
 
 #include <stdio.h>
 
+/// HSV ranges structure
 struct HSVRanges
 {
     int lowH = 0;

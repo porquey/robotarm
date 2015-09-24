@@ -1,11 +1,3 @@
-//
-//  JointPositions.h
-//  robotarm
-//
-//  Created by Forest Fraser on 31/08/15.
-//  Copyright (c) 2015 UoA. All rights reserved.
-//
-
 #ifndef __robotarm__JointPositions__
 #define __robotarm__JointPositions__
 
@@ -19,22 +11,32 @@
 using namespace cv;
 using namespace std;
 
+// reprojects 3D points back to a set of 2D points on the images
 void ReprojectPoints(Point3f pt, Point2f &pt1, Point2f &pt2, Mat &cameraMatrix1, Mat &cameraMatrix2, Mat &translation);
-void DetermineBasePairs(KeyPoint *random, KeyPoint *sorted);
-void DeterminePairs(KeyPoint *random, KeyPoint *sorted, Point pt1, Point pt2);
-//void CalculateLinkVector(vector<Point2f> points, vector<Point3f> linkPoints, Mat &cameraMatrix1, Mat &cameraMatrix2, Mat &translation);
-void CalculateJoint(Point3f *link1, Point3f *link2, Point3f &joint, double &angle);
+// calculates the 3D point for a given set of 2D points
 Point3f Calculate3DPoint(Point2f pt1, Point2f pt2, Mat &cameraMatrix1, Mat &cameraMatrix2, Mat &translation);
+// calculates the distance between 2 points
 double CalculateDisplacement(Point a, Point b);
+// calculate the angle between 2 vectors
 double CalculateAngle(Point3f a, Point3f b);
+// calculates the vector between 2 points
 Point3f CalculateVector(Point3f a, Point3f b);
+// calculates the dot product
 double CalculateDotProduct(Point3f a, Point3f b);
+// calculates the cross product
 Point3f CalculateCrossProduct(Point3f a, Point3f b);
+// finds the direction of a joint angle
 int FindAngleDirection(Point3f baseVector, Point3f link1, Point3f link2);
+// calculates the length of a vector
 double CalculateLength(Point3f a);
+// calculates the unit vector
 Point3f CalculateUnitVector(Point3f a, Point3f b);
+// multiplies a vector
 Point3f MultiplyVector(Point3f a, double length);
+// converts a 3D point to 2D
 Point2f Convert3fTo2f(Point3f a);
 
-#endif /* defined(__robotarm__JointPositions__) */
-
+//void DetermineBasePairs(KeyPoint *random, KeyPoint *sorted);
+//void DeterminePairs(KeyPoint *random, KeyPoint *sorted, Point pt1, Point pt2);
+//void CalculateJoint(Point3f *link1, Point3f *link2, Point3f &joint, double &angle);
+#endif

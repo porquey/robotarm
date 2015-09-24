@@ -88,7 +88,7 @@ void BetterBlobDetector::findBlobs(const cv::Mat &image, const cv::Mat &binaryIm
                 continue;
         }
         
-        //compute blob radius
+        // compute blob radius
         {
             vector<double> dists;
             for (size_t pointIdx = 0; pointIdx < contours[contourIdx].size(); pointIdx++)
@@ -113,7 +113,7 @@ const std::vector < std::vector<cv::Point> > BetterBlobDetector::getContours()
 }
 
 
-void BetterBlobDetector::getBlobData(size_t idx, double &area, double &circularity, double &inertia, double &perimeter, double &convexity)//, bool moreData, uchar &intensity, cv::Vec3b &color, cv::Vec3b &hsvColor, cv::Mat &image, cv::Mat &binaryImage, cv::Mat &hsvImage)
+void BetterBlobDetector::getBlobData(size_t idx, double &area, double &circularity, double &inertia, double &perimeter, double &convexity)
 {
     
     Moments moms = moments(Mat(_contours[idx]));
@@ -146,18 +146,10 @@ void BetterBlobDetector::getBlobData(size_t idx, double &area, double &circulari
     double contArea = contourArea(Mat(_contours[idx]));
     double hullArea = contourArea(Mat(hull));
     convexity = contArea / hullArea;
-    /*if(moreData)
-     {
-     Point2d location = Point2d(moms.m10 / moms.m00, moms.m01 / moms.m00);
-     intensity = binaryImage.at<uchar> (cvRound(location.y), cvRound(location.x));
-     color = image.at<cv::Vec3b> (cvRound(location.y), cvRound(location.x));
-     hsvColor = hsvImage.at<cv::Vec3b> (cvRound(location.y), cvRound(location.x));
-     }*/
 }
 
 void BetterBlobDetector::detectImpl(const cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, const cv::Mat&) const
 {
-    //TODO: support mask
     _contours.clear();
     
     keypoints.clear();
@@ -205,7 +197,6 @@ void BetterBlobDetector::detectImpl(const cv::Mat& image, std::vector<cv::KeyPoi
             {
                 newCenters.push_back(vector<Center> (1, curCenters[i]));
                 newContours.push_back(curContours[i]);
-                //centers.push_back(vector<Center> (1, curCenters[i]));
             }
         }
         std::copy(newCenters.begin(), newCenters.end(), std::back_inserter(centers));

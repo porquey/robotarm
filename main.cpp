@@ -49,12 +49,6 @@ Mat cameraMatrix1, cameraMatrix2, mapX1, mapY1, mapX2, mapY2, translation;
 
 double l0 = LINK0, l1 = LINK1, l2 = LINK2;
 
-void drawPoints(Mat &img1, Mat &img2, Point2f pt1, Point2f pt2, Scalar colour)
-{
-    circle(img1, pt1, 10, colour);//Scalar(r, g, b));
-    circle(img2, pt2, 10, colour);//Scalar(r, g, b));
-}
-
 
 void Draw3DPoint(Point3f pt, Mat &dst1, Mat &dst2)
 {
@@ -75,6 +69,43 @@ void Draw3DLine(Point3f pt1, Point3f pt2, Mat &dst1, Mat &dst2)
     line(dst2, b1, b2, Scalar(255, 255, 0), 2);
 }
 
+void DrawInverseKinematics(vector<Point3f> coords, double* angles, Point3f temp, Mat &dst1, Mat &dst2)
+{
+    Point3f basej = coords[1];
+    double tempAngle0, tempAngle1, tempAngle2;
+    if(temp.z > coords[0].z)
+    {
+        tempAngle0 = angles[0];
+        tempAngle1 = -angles[1];
+        tempAngle2 = -angles[2];
+    }
+    else
+    {
+        tempAngle0 = angles[0];
+        tempAngle1 = angles[1];
+        tempAngle2 = angles[2];
+    }
+    
+    double height = l1 * sin(HALF_PI - tempAngle1);
+    double width = l1 * cos(HALF_PI - tempAngle1);
+    
+    Point3f jj1 = Point3f(basej.x - cos(tempAngle0) * width, height + basej.y, basej.z - sin(tempAngle0) * width);
+    Draw3DPoint(basej, dst1, dst2);
+    Draw3DPoint(jj1, dst1, dst2);
+    Draw3DLine(basej, jj1, dst1, dst2);
+    Draw3DLine(basej, coords[0], dst1, dst2);
+    
+    Point3f baseVec = temp - coords[0];
+    baseVec.y = 0;
+    
+    int d = FindAngleDirection(baseVec, basej - jj1, temp - jj1);
+    
+    double extraHeight = l2 * sin(HALF_PI - tempAngle1 + tempAngle2 * d);
+    double extraWidth = l2 * cos(HALF_PI - tempAngle1 + tempAngle2 * d);
+    Point3f jj2 = Point3f(jj1.x - cos(tempAngle0) * extraWidth, jj1.y + extraHeight, jj1.z - sin(tempAngle0) * extraWidth);
+    Draw3DPoint(jj2, dst1, dst2);
+    Draw3DLine(jj1, jj2, dst1, dst2);
+}
 
 int main(int argc, char** argv)
 {
@@ -226,19 +257,12 @@ int main(int argc, char** argv)
         t1.release();
         t2.release();
         
-        //cerr << "Image remapping: " << float(clock() - beginTime)/CLOCKS_PER_SEC << endl;
-        //sum1 += float(clock() - beginTime)/CLOCKS_PER_SEC;
-        //beginTime = clock();
-        
         vector<bool> detectedVec;
         vector<Point3f> coords, coordsLast;
         static Point3f base, tip;
         
         static Point3f joint1, joint2;
-        double angle1, angle2;
         static Point3f begin0, begin1, begin2, end0, end1, end2;
-        static Point3f link0[2], link1[2], link2[2];
-        static KeyPoint random0[4], sorted0[4], random1[4], sorted1[4], random2[4], sorted2[4];
 
         dst1 = image1.clone();
         dst2 = image2.clone();
@@ -274,148 +298,6 @@ int main(int argc, char** argv)
             cv::drawKeypoints(dst2, keypointVec2, dst2, cv::Scalar(0, 255, 255), cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
 
         }
-        else
-        {
-
-            KeyPoint p1, p2, p3, p4;
-            
-            static bool firstDetect0 = false, firstDetect1 = false;
-
-            bool detected0 = detector[0].GetStripVectors(image1, image2, p1, p2, p3, p4);
-            if(detected0)
-            {
-                if(!firstDetect0)
-                {
-                    firstDetect0 = true;
-                }
-                random0[0] = p1;
-                random0[1] = p2;
-                random0[2] = p3;
-                random0[3] = p4;
-                //cerr << "Detected base!" << endl;
-                DetermineBasePairs(random0, sorted0);
-                begin0 = Calculate3DPoint(sorted0[0].pt, sorted0[2].pt, cameraMatrix1, cameraMatrix2, translation);
-                end0 = Calculate3DPoint(sorted0[1].pt, sorted0[3].pt, cameraMatrix1, cameraMatrix2, translation);
-                link0[0] = begin0;
-                link0[1] = end0;
-                base = begin0;
-            }
-                
-            bool detected1 = detector[1].GetStripVectors(image1, image2, p1, p2, p3, p4);
-            if(detected1 && firstDetect0)
-            {
-                if(!firstDetect1)
-                {
-                    firstDetect1 = true;
-                }
-                random1[0] = p1;
-                random1[1] = p2;
-                random1[2] = p3;
-                random1[3] = p4;
-                DeterminePairs(random1, sorted1, sorted0[0].pt, sorted0[2].pt);
-                begin1 = Calculate3DPoint(sorted1[0].pt, sorted1[2].pt, cameraMatrix1, cameraMatrix2, translation);
-                end1 = Calculate3DPoint(sorted1[1].pt, sorted1[3].pt, cameraMatrix1, cameraMatrix2, translation);
-                link1[0] = begin1;
-                link1[1] = end1;
-                
-                CalculateJoint(link0, link1, joint1, angle1);
-            }
-                    //cerr << "Detected joint 1! Angle is: " << angle1 << endl;
-
-            bool detected2 = detector[2].GetStripVectors(image1, image2, p1, p2, p3, p4);
-            if(detected2 && firstDetect1)
-            {
-                random2[0] = p1;
-                random2[1] = p2;
-                random2[2] = p3;
-                random2[3] = p4;
-                DeterminePairs(random2, sorted2, sorted1[0].pt, sorted1[2].pt);
-                
-                begin2 = Calculate3DPoint(sorted2[0].pt, sorted2[2].pt, cameraMatrix1, cameraMatrix2, translation);
-                end2 = Calculate3DPoint(sorted2[1].pt, sorted2[3].pt, cameraMatrix1, cameraMatrix2, translation);
-                
-                link2[0] = begin2;
-                link2[1] = end2;
-                CalculateJoint(link1, link2, joint2, angle2);
-                //cerr << "Detected joint 2! Angle is: " << angle2 << endl;
-                tip = begin2;
-            }
-            
-            Point2f joint11, joint12, joint21, joint22;
-            Point2f begin01, begin02, end01, end02, begin11, begin12, end11, end12, begin21, begin22, end21, end22;
-            
-
-            ReprojectPoints(begin0, begin01, begin02, cameraMatrix1, cameraMatrix2, translation);
-            ReprojectPoints(begin1, begin11, begin12, cameraMatrix1, cameraMatrix2, translation);
-            ReprojectPoints(end0, end01, end02, cameraMatrix1, cameraMatrix2, translation);
-            ReprojectPoints(end1, end11, end12, cameraMatrix1, cameraMatrix2, translation);
-            ReprojectPoints(begin2, begin21, begin22, cameraMatrix1, cameraMatrix2, translation);
-            ReprojectPoints(end2, end21, end22, cameraMatrix1, cameraMatrix2, translation);
-            
-            ReprojectPoints(joint1, joint11, joint12, cameraMatrix1, cameraMatrix2, translation);
-            ReprojectPoints(joint2, joint21, joint22, cameraMatrix1, cameraMatrix2, translation);
-
-            circle(dst1, begin01, 5, Scalar(0, 0, 0));
-            circle(dst1, begin11, 5, Scalar(0, 0, 0));
-            circle(dst1, begin21, 5, Scalar(0, 0, 0));
-            circle(dst2, begin02, 5, Scalar(0, 0, 0));
-            circle(dst2, begin12, 5, Scalar(0, 0, 0));
-            circle(dst2, begin22, 5, Scalar(0, 0, 0));
-
-            line(dst1, begin01, end01, Scalar(0, 0, 0));
-            line(dst1, begin11, end11, Scalar(0, 0, 0));
-            line(dst1, begin21, end21, Scalar(0, 0, 0));
-            
-            line(dst2, begin02, end02, Scalar(0, 0, 0));
-            line(dst2, begin12, end12, Scalar(0, 0, 0));
-            line(dst2, begin22, end22, Scalar(0, 0, 0));
-
-            
-            circle(dst1, joint11, 5, Scalar(0, 255, 0));
-            circle(dst1, joint21, 5, Scalar(0, 255, 0));
-            circle(dst2, joint12, 5, Scalar(0, 255, 0));
-            circle(dst2, joint22, 5, Scalar(0, 255, 0));
-
-            
-            circle(dst1, sorted0[0].pt, 5, Scalar(255, 0, 0));
-            circle(dst1, sorted0[1].pt, 5, Scalar(0, 0, 255));
-            line(dst1, sorted0[0].pt, sorted0[1].pt, Scalar(255,0,0));
-            
-            circle(dst2, sorted0[2].pt, 5, Scalar(255, 0, 0));
-            circle(dst2, sorted0[3].pt, 5, Scalar(0, 0, 255));
-            line(dst2, sorted0[2].pt, sorted0[3].pt, Scalar(255,0,0));
-            
-            
-            
-            circle(dst1, sorted1[0].pt, 5, Scalar(255, 0, 0));
-            circle(dst1, sorted1[1].pt, 5, Scalar(0, 0, 255));
-            line(dst1, sorted1[0].pt, sorted1[1].pt, Scalar(255,0,0));
-
-            circle(dst2, sorted1[2].pt, 5, Scalar(255, 0, 0));
-            circle(dst2, sorted1[3].pt, 5, Scalar(0, 0, 255));
-            line(dst2, sorted1[2].pt, sorted1[3].pt, Scalar(255,0,0));
-            
-            
-            
-            circle(dst1, sorted2[0].pt, 5, Scalar(255, 0, 0));
-            circle(dst1, sorted2[1].pt, 5, Scalar(0, 0, 255));
-            line(dst1, sorted2[0].pt, sorted2[1].pt, Scalar(255,0,0));
-                
-            circle(dst2, sorted2[2].pt, 5, Scalar(255, 0, 0));
-            circle(dst2, sorted2[3].pt, 5, Scalar(0, 0, 255));
-            line(dst2, sorted2[2].pt, sorted2[3].pt, Scalar(255,0,0));
-            
-            /*string posStr = "X: " + to_string(joint1.x) + "  Y: " + to_string(joint1.y) + "  Z: " + to_string(joint1.z);
-            putText(dst1, posStr, Point(5, 15 * 1), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 255, 255));
-            posStr = "X: " + to_string(joint2.x) + "  Y: " + to_string(joint2.y) + "  Z: " + to_string(joint2.z);
-            putText(dst1, posStr, Point(5, 15 * 2), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 255, 255));
-            
-            string angleStr = "JOINT1: " + to_string(angle1);
-            putText(dst2, angleStr, Point(5, 15 * 2), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 255, 255));
-            angleStr = "JOINT2: " + to_string(angle2);
-            putText(dst2, angleStr, Point(5, 15 * 3), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 255, 255));
-*/
-        }
         
         KeyPoint keypoint1, keypoint2;
         if(targetExists)
@@ -425,21 +307,13 @@ int main(int argc, char** argv)
             targetCoord = Calculate3DPoint(keypoint1.pt, keypoint2.pt, cameraMatrix1, cameraMatrix2, translation);
             targetVec1.push_back(keypoint1);
             targetVec2.push_back(keypoint2);
-            
-            //circle(dst1, keypoint1.pt, 5, Scalar(0, 255, 255));
-            //circle(dst2, keypoint2.pt, 5, Scalar(0, 255, 255));
-            
+
             cv::drawKeypoints(dst1, targetVec1, dst1, cv::Scalar(255, 255, 255), cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
             cv::drawKeypoints(dst2, targetVec2, dst2, cv::Scalar(255, 255, 255), cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
             
             string posStr = "X: " + to_string(targetCoord.x) + "  Y: " + to_string(targetCoord.y) + "  Z: " + to_string(targetCoord.z);
-            //putText(dst1, posStr, Point(5, 15 * 5), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 255));
+
         }
-   
-        //cerr << "Blob detection: " << float(clock() - beginTime)/CLOCKS_PER_SEC << endl;
-        //sum2 += float(clock() - beginTime)/CLOCKS_PER_SEC;
-        //beginTime = clock();
-        
         
         /////CONTROL/////
         Point2f pt1, pt2;
@@ -464,7 +338,7 @@ int main(int argc, char** argv)
         control.GetCurrentPose(currAngles);
         
         
-        control.UpdateArmPose(coords[3], pid0.GetLastError(), pid1.GetLastError(), pid2.GetLastError());
+        control.UpdateArmPose(pid0.GetLastError(), pid1.GetLastError(), pid2.GetLastError());
 
         
         string angleStr;
@@ -534,11 +408,11 @@ int main(int argc, char** argv)
                     }
                     
                 }
-                control.SendJointActuators(pid0.update(currAngles[0], angles[0]),pid1.update(currAngles[1], angles[1]), pid2.update(currAngles[2], angles[2]));
+                control.SendJointActuators(pid0.Update(currAngles[0], angles[0]),pid1.Update(currAngles[1], angles[1]), pid2.Update(currAngles[2], angles[2]));
             }
             else
             {
-                control.SendJointActuators(0,pid1.update(currAngles[1], 0), pid2.update(currAngles[2], 0));
+                control.SendJointActuators(0,pid1.Update(currAngles[1], 0), pid2.Update(currAngles[2], 0));
             }
         }
         else{
@@ -552,72 +426,9 @@ int main(int argc, char** argv)
         recorder4.writeValue(CalculateLength(tempTarget - coords[3]), (double)clock());
         recorder5.writeValue(CalculateLength(control.GetFuzzyTarget() - coords[3]), (double)clock());
         
-
-
         
-      
-        Point3f basej = coords[1];
+        DrawInverseKinematics(coords, angles, control.GetFuzzyTarget(), dst1, dst2);
         
-        Point3f tempTemp = control.GetFuzzyTarget();
-        
-        double tempAngle0, tempAngle1, tempAngle2;
-        if(tempTemp.z > coords[0].z)
-        {
-            tempAngle0 = angles[0];
-            /*tempAngle0 = angles[0] - PI;
-            if(tempAngle0 > PI)
-            {
-                tempAngle0 -= 2 * PI;
-            }
-            else if(tempAngle0 < -PI)
-            {
-                tempAngle0 += 2 * PI;
-            }*/
-            tempAngle1 = -angles[1];
-            tempAngle2 = -angles[2];
-        }
-        else
-        {
-            tempAngle0 = angles[0];
-            tempAngle1 = angles[1];
-            tempAngle2 = angles[2];
-        }
-        
-        //cerr << "a0:" << tempAngle0 << " a1:" << tempAngle1 <<" a2:" << tempAngle2 << endl;
-        
-        double height = l1 * sin(HALF_PI - tempAngle1);
-        double width = l1 * cos(HALF_PI - tempAngle1);
-        
-        Point3f jj1 = Point3f(basej.x - cos(tempAngle0) * width, height + basej.y, basej.z - sin(tempAngle0) * width);
-        Draw3DPoint(basej, dst1, dst2);
-        Draw3DPoint(jj1, dst1, dst2);
-        Draw3DLine(basej, jj1, dst1, dst2);
-        Draw3DLine(basej, coords[0], dst1, dst2);
-
-        Point3f baseVec = tempTemp - coords[0];
-        baseVec.y = 0;
-        
-        int d = FindAngleDirection(baseVec, basej - jj1, tempTemp - jj1);
-        
-        double extraHeight = l2 * sin(HALF_PI - tempAngle1 + tempAngle2 * d);
-        double extraWidth = l2 * cos(HALF_PI - tempAngle1 + tempAngle2 * d);
-        Point3f jj2 = Point3f(jj1.x - cos(tempAngle0) * extraWidth, jj1.y + extraHeight, jj1.z - sin(tempAngle0) * extraWidth);
-        Draw3DPoint(jj2, dst1, dst2);
-        Draw3DLine(jj1, jj2, dst1, dst2);
-        
-        Point2f point1;
-        Point2f point2;
-        
-        
-//        for(int i = 0; i < 5; i++)
-//        {
-//            //for(int j = 2; j < 3; j++)
-//            //{
-//            //ReprojectPoints(Point3f(-200 + i * 100, yOffset, -200 + j * 100), point1, point2, cameraMatrix1, cameraMatrix2, translation);
-//            Scalar pixel = Scalar(255 - i * 50, 255 - j * 50, 255);
-//            //drawPoints(dst1, dst2, point1, point2, pixel);
-//            //}
-//        }
         
         putText(dst1, fpsStr, Point(5, 15 * 3), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 255));
 
@@ -731,88 +542,6 @@ int main(int argc, char** argv)
             double zOffset = zOff * 100;
             tempTarget = Point3f(xOffset, yOffset, zOffset);
         }
-        else if(ch == '2')
-        {
-            pid1.reset();
-            pid0.reset();
-            pid2.reset();
-            xOff = -2;
-            yOff = -1;
-            zOff = -2;
-        }
-        else if(ch == '3')
-        {
-            pid1.reset();
-            pid0.reset();
-            pid2.reset();
-            xOff = 0;
-            yOff = -2;
-            zOff = -3;
-        }
-        else if(ch == '4')
-        {
-            pid1.reset();
-            pid0.reset();
-            pid2.reset();
-            xOff = -2;
-            yOff = -2;
-            zOff = -2;
-        }
-        else if(ch == '5')
-        {
-            pid1.reset();
-            pid0.reset();
-            pid2.reset();
-            xOff = -1;
-            yOff = -2;
-            zOff = 3;
-        }
-        else if(ch == '6')
-        {
-            pid1.reset();
-            pid0.reset();
-            pid2.reset();
-            xOff = -1;
-            yOff = -2;
-            zOff = -2;
-        }
-        
-        else if(ch == '7')
-        {
-            pid1.reset();
-            pid0.reset();
-            pid2.reset();
-            xOff = -1;
-            yOff = -2;
-            zOff = -3;
-        }
-        else if(ch == '8')
-        {
-            pid1.reset();
-            pid0.reset();
-            pid2.reset();
-            xOff = -2;
-            yOff = -1;
-            zOff = 2;
-        }
-        else if(ch == '9')
-        {
-            pid1.reset();
-            pid0.reset();
-            pid2.reset();
-            xOff = 3;
-            yOff = 0;
-            zOff = 2;
-        }
-        else if(ch == '0')
-        {
-            pid1.reset();
-            pid0.reset();
-            pid2.reset();
-            xOff = 3;
-            yOff = -3;
-            zOff = 2;
-        }
         else if((int)ch == 27)
         {
             return 0;
@@ -821,9 +550,9 @@ int main(int argc, char** argv)
         {
             destAngle = 0.3;
             cerr << "PID enabled. Target : " << destAngle << endl;
-            pid1.reset();
-            pid0.reset();
-            pid2.reset();
+            pid1.Reset();
+            pid0.Reset();
+            pid2.Reset();
             pidEnabled = true;
             delayPassed = false;
         }
