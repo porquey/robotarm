@@ -16,7 +16,7 @@ using namespace std;
 class GraphRecorder
 {
 public:
-    enum RecorderState {RECORDING, STOPPED};
+    enum RecorderState {INITIALISED, RECORDING, STOPPED};
     void writeValue(double a, double b);
     void writeValue(double a, double b, double c);
     void start(string s);

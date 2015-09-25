@@ -12,11 +12,12 @@ void GraphRecorder::open(string s)
 /// In: a,b: values to record in text file
 void GraphRecorder::writeValue(double a, double b)
 {
-    if (clock() > endTime)
-        close();
-    else if (state == RECORDING)
+    if (state == RECORDING)
     {
-        fs << a << "\t" << b << endl;
+        if (clock() > endTime)
+            close();
+        else
+            fs << a << "\t" << b << endl;
     }
 }
 
@@ -24,11 +25,12 @@ void GraphRecorder::writeValue(double a, double b)
 /// In: a,b,c: values to record in text file
 void GraphRecorder::writeValue(double a, double b, double c)
 {
-    if (clock() > endTime)
-        close();
-    else if (state == RECORDING)
+    if (state == RECORDING)
     {
-        fs << a << "\t" << b << "\t" << c << endl;
+        if (clock() > endTime)
+            close();
+        else
+            fs << a << "\t" << b << "\t" << c << endl;
     }
 }
 

@@ -278,9 +278,7 @@ int main(int argc, char** argv)
                 vector<KeyPoint> keypointVec;
 
                 bool detected = detector[i].GetJointPos(imageVec, keypointVec);
-                
-               
-                
+
                 
                 Point3f coordTemp = Calculate3DPoint(keypointVec[0].pt, keypointVec[1].pt, cameraMatrix1, cameraMatrix2, translation);
                 
@@ -322,7 +320,6 @@ int main(int argc, char** argv)
         putText(dst1, posStr, Point(5, 15 * 1), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 255));
         posStr = "END EFFECTOR X: " + to_string(coords[3].x) + "  Y: " + to_string(coords[3].y) + "  Z: " + to_string(coords[3].z);
         putText(dst1, posStr, Point(5, 15 * 2), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 255));
-        //cerr << base << " " << joint1 << " " << joint2 << " " << tip << endl;
         control.SetArmPose(coords);
         if(targetExists && targetToggle)
         {
@@ -363,7 +360,7 @@ int main(int argc, char** argv)
             if (currAngles[i] < -3.14 || currAngles[i] > 3.14 )
             {
                 inRange = false;
-                cerr << "JOINT " << i << "OUT OF RANGE: " << currAngles[i] << endl;
+                cerr << "JOINT " << i << " OUT OF RANGE: " << currAngles[i] << endl;
             }
         }
         static bool hacky = false;
@@ -435,7 +432,6 @@ int main(int argc, char** argv)
         
         while((clock()-beginTime) < intervalTime){};
         fpsStr = "FPS: " + to_string(clock()-beginTime);
-//        cerr << fpsStr << endl;
         
         if ((clock() - startTime) > 5000000 && startTime != 0){
             delayPassed = true;
@@ -560,16 +556,9 @@ int main(int argc, char** argv)
             pidEnabled = false;
             rampEnabled = false;
             control.SendJointActuators(0,0,0);
-//            cerr << "PID enabled. Target : " << destAngle << endl;
-//            destAngle = -1.5;
-//            PIDEnabled = true;
-//            pid1.reset();
-//            pid0.reset();
-//            pid2.reset();
         }
         else if (ch == 's')
         {
-            //ramp.start(HALF_PI, 15000000, 5000000);
             starty = true;
             //control.InitFuzzyController();
 
